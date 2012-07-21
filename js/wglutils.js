@@ -447,6 +447,7 @@ MyWglStuff = function (canvas) {
             canvas.brush = new Brush (canvas.wgl, function (brush) {
                 // Add the brush pointer to the scene.
                 canvas.wgl.scene.add (brush.pointer_mesh);
+                canvas.setInstrument ("brush");
             });
             
             // Tell the caller that we created something.

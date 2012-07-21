@@ -1255,9 +1255,11 @@
             
             // Push the instrument state.
             if (this.brush) {
-                i.state.size  = GRID.PARTICLE_R * this.brush.scale.x;
-                i.state.color = this.brush.basecolor.getHex ();
-                i.state.valid = true;
+                if (i.valid) {
+                    i.state.size  = GRID.PARTICLE_R * this.brush.scale.x;
+                    i.state.color = this.brush.basecolor.getHex ();
+                    i.state.valid = true;
+                }
             }
             
             // Commit before changing instrument.
@@ -1339,8 +1341,6 @@
 
             controls = new ControlsView ({canvas: canvas});
             wacom_plugin = document.getElementById ("wacom-plugin");
-            
-            canvas.setInstrument ("brush");
 
             // "Hide hint" link.
             if ($.session.get ("hidehint")) {
