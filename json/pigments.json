@@ -1,0 +1,138 @@
+{"pigments":[
+    {
+        "name":        "Chinese White",
+        "code":        "PW4",
+        "color":       "0xFFFFFF",
+        "granulation": 0.01,
+        "opacity":     0.02,
+        "diffusion":   0.25,
+        "blossom":     0.50,
+        "staining":    0.50 
+    },{
+        "name":        "Cadmium Yellow",
+        "code":        "PY35",
+        "color":       "0xf1e433",
+        "granulation": 0.01,
+        "opacity":     0.20,
+        "diffusion":   0.25,
+        "blossom":     0.75,
+        "staining":    0.75 
+    },{
+        "name":        "Benzimida Yellow",
+        "code":        "PY154",
+        "color":       "0xdbbc2e",
+        "granulation": 0.10,
+        "opacity":     0.02,
+        "diffusion":   0.25,
+        "blossom":     0.75,
+        "staining":    0.75 
+    },{
+        "name":        "Cadmium Scarlet",
+        "code":        "PR108",
+        "color":       "0xe94730",
+        "granulation": 0.10,
+        "opacity":     0.10,
+        "diffusion":   0.75,
+        "blossom":     0.75,
+        "staining":    0.75 
+    },{
+        "name":        "Perylene Maroon",
+        "code":        "PR179",
+        "color":       "0xd4322f",
+        "granulation": 0.10,
+        "opacity":     0.01,
+        "diffusion":   0.01,
+        "blossom":     0.75,
+        "staining":    1.00
+    },{
+        "name":        "Quinacridone Magenta",
+        "code":        "PR122",
+        "color":       "0xe83b4f",
+        "granulation": 0.10,
+        "opacity":     0.01,
+        "diffusion":   0.01,
+        "blossom":     0.75,
+        "staining":    1.00
+    },{
+        "name":        "Cobalt Blue",
+        "code":        "PB28",
+        "color":       "0x48439d",
+        "granulation": 0.75,
+        "opacity":     0.10,
+        "diffusion":   0.75,
+        "blossom":     0.25,
+        "staining":    0.50 
+    },{
+        "name":        "Winsor Blue GS",
+        "code":        "PB15:3",
+        "color":       "0x2688d3",
+        "granulation": 0.05,
+        "opacity":     0.20,
+        "diffusion":   0.25,
+        "blossom":     0.50,
+        "staining":    0.50 
+    },{
+        "name":        "French Ultramarine Blue",
+        "code":        "PB29",
+        "color":       "0x2a3b97",
+        "granulation": 0.75,
+        "opacity":     0.10,
+        "diffusion":   0.75,
+        "blossom":     0.25,
+        "staining":    0.25 
+    },{
+        "name":        "Cerulean Blue",
+        "code":        "PB36",
+        "color":       "0x0274ae",
+        "granulation": 0.05,
+        "opacity":     0.02,
+        "diffusion":   1.00,
+        "blossom":     0.75,
+        "staining":    0.75 
+    },{
+        "name":        "Winsor Green BS",
+        "code":        "PG7",
+        "color":       "0x07997e",
+        "granulation": 0.01,
+        "opacity":     0.02,
+        "diffusion":   0.25,
+        "blossom":     0.25,
+        "staining":    1.00 
+    },{
+        "name":        "Winsor Green YS",
+        "code":        "PG36",
+        "color":       "0x74c176",
+        "granulation": 0.01,
+        "opacity":     0.02,
+        "diffusion":   0.50,
+        "blossom":     0.75,
+        "staining":    1.00 
+    },{
+        "name":        "Gold Ochre",
+        "code":        "PY42",
+        "color":       "0xEB8346",
+        "granulation": 0.01,
+        "opacity":     0.10,
+        "diffusion":   0.50,
+        "blossom":     0.50,
+        "staining":    0.75 
+    },{
+        "name":        "Burnt Sienna",
+        "code":        "PBr7",
+        "color":       "0xAD534A",
+        "granulation": 0.20,
+        "opacity":     0.10,
+        "diffusion":   0.50,
+        "blossom":     0.25,
+        "staining":    0.75 
+    },{
+        "name":        "Neutral Tint",
+        "code":        "PBk6+PB15+PV19",
+        "color":       "0x242F2C",
+        "granulation": 0.20,
+        "opacity":     0.02,
+        "diffusion":   1.00,
+        "blossom":     0.75,
+        "staining":    1.00 
+    }
+]}

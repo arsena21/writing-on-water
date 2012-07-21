@@ -1,0 +1,2 @@
+# Ignore some code files.
+*.gen.c

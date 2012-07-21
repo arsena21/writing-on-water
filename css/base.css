@@ -1,0 +1,145 @@
+
+body {
+    font-size: small;
+    background: #ccb;/*fff url(images/plaster.jpg) repeat;*/
+    height: 100%;
+}
+a:hover {
+    color: #F00;
+}
+
+.slider_header {
+    margin-top: 8px;
+}
+
+#container {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: 64px;
+    
+    background-color: transparent;
+    padding-left: 32px;
+    padding-top: 32px;
+    padding-right: 256px;
+    padding-bottom: 32px;
+}
+#alertbox {
+    position: absolute;
+    top: 8px;
+    left: 40px;
+    z-index: 10;
+    display: none;
+}
+#warningbox {
+    position: absolute;
+    top: 8px;
+    left: 40px;
+    z-index: 10;
+    display: none;
+}
+#header {
+    text-align: right;
+    padding-right: 64px;
+    font-size: large;
+    font-style: italic;
+}
+#header strong {
+    font-size: x-large;
+}
+#canvas {
+    width: 100%;
+    height: 95%;
+    border: 1px solid black;
+}
+#canvas-wrap {
+    padding: 2px;
+    width: 100%;
+    height: 95%;
+    background-color: black;
+}
+#canvas-status {
+    width: 100%;
+    height: 2.0em;
+    font-size: small;
+}
+
+#pane {
+    z-index: 10;
+    position: absolute;
+    right: 12px;
+    top: 0px;
+    bottom: 0px;
+    padding: 4px;
+    width: 200px;
+    text-align: center;
+    
+    background: #fff url(images/plaster.jpg) repeat;
+    border: 2px outset #eee;
+}
+#controls {
+    clear: both;
+    padding-top: 32px;
+    text-align: left;
+    font-size: x-small;
+}
+#picker {
+    margin-top: 2em;
+    float: right;
+}
+#colorsample {
+    min-width: 16px;
+    display: inline-block;
+    background-color: #f00;
+    margin-right: 4px;
+    margin-top: 8px;
+    border: 1px solid black;
+}
+#colorlabel {
+}
+
+#hint {
+    z-index: 10;
+    position: absolute;
+    bottom: 32px;
+    
+    border: 1px solid #777;
+    background-color: #eee;
+    padding: 16px;
+    color: #333;
+    /*
+    -moz-box-shadow: 5px 5px 3px #888;
+    -webkit-box-shadow: 5px 5px 3px #888;
+    box-shadow: 5px 5px 3px #888;
+    */
+}
+#hint a {
+    text-decoration: none;
+}
+
+#footer {
+    background-color: #ccb;
+    border-top: 1px solid #111;
+    position: absolute;
+    bottom: 0;
+    width: 95%;
+    margin: auto;
+}
+#footer a {
+    text-decoration: none;
+    vertical-align: top;
+    padding-left: 8px;
+}
+
+.left {
+    float: left;
+}
+
+.right {
+    float: right;
+}
+
+.clear {
+    clear: both;
+}

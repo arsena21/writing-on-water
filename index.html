@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="farbtastic/farbtastic.css" type="text/css" />
+  <link rel="stylesheet" href="css/redcompact/jquery-ui-1.8.21.custom.css" type="text/css" />
+  <link rel="stylesheet" media="all" href="css/base.css" />
+  <title>Writing on Water</title>
+</head>
+<body>
+  <div class="ui-widget" id="alertbox">
+    <div class="ui-state-error ui-corner-all" style="padding: 0 .7em;">
+        <p><span class="ui-icon ui-icon-alert" style="float: left; margin-right: .3em;"></span>
+        <span id="alert_text"></span></p>
+    </div>
+  </div>
+  <div class="ui-widget" id="warningbox">
+    <div class="ui-state-highlight ui-corner-all" style="padding: 0 .7em;">
+        <p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>
+        <span id="warning_text"></span></p>
+    </div>
+  </div>
+
+  <div id="container">
+      <div id="header"><strong>Writing on Water</strong> webgl watercolor simulation</div>
+      <div id="canvas"></div>
+      <div id="canvas-status"></div>
+  </div>
+  <div id="pane">
+    <div id="picker"></div>
+    <div id="controls"></div>
+  </div>
+  <div id="hint">
+    Hold <b>space</b> to move camera.<br/>
+    Hold <b>shift</b> to rotate camera.<br/>
+    <br/>
+    <a id="hidehint" href="#">hide this message.</a>
+  </div>
+  <div id="footer">
+    <iframe
+        src="http://markdotto.github.com/github-buttons/github-btn.html?user=grief-of-these-days&amp;repo=writing-on-water&amp;type=watch" 
+        style="overflow:hidden; border: 0;" width="62" height="20">
+    </iframe>
+    <a href="https://github.com/mrdoob/three.js/">three.js</a>
+    <a href="http://acko.net/blog/farbtastic-jquery-color-picker-plug-in">farbtastic</a>
+  </div>
+
+  <embed id="wacom-plugin" type="application/x-wacom-tablet" width="0" height="0" />
+
+  <script type="text/template" id="fancyslider_template">
+    <div class="slider_header" style="width: 100%;">
+        <span id="<%=selector2%>" class="left"><%=title%>: <%=def_value%><%=measure%></span>
+        <% if (!hide_auto) { %>
+        <input type="checkbox" id="<%=selector0%>" class="right" <% if (auto) { %>checked<% } %>/>
+        <label for="<%=selector0%>" class="right">auto</label>
+        <% } %>
+        <div class="clear"></div>
+    </div>
+    <div id="<%=selector1%>"></div>
+  </script>
+  
+  <script type="text/template" id="controls_template">
+    <div id="colorlabelwrap">Closest known pigment:<br/>
+        <span id="colorsample">&nbsp;</span><span id="colorlabel"></span>
+    </div>
+    <input id="snapcolor" type="checkbox">Snap color to the closest pigment.</input>
+    <br/><br/>
+    <button id="commit">Commit</button>
+    <button id="clear">Clear</button>
+    <button id="save">Save canvas</button><br/>
+    <div id="accordion">
+        <h3><a href="#">Painting</a></h3>
+        <div id="controls_brush">
+            Instrument preset:<br/>
+            <div id="radioi">
+                <input type="radio" id="i_pencil" name="radioi" /><label for="i_pencil">
+                    <img width="16" height="16" src="http://rain-d.ru/img/leaf0.png" />
+                </label>
+                <input type="radio" id="i_brush" name="radioi" checked="checked" /><label for="i_brush">
+                    <img width="16" height="16" src="http://rain-d.ru/img/leaf0.png" />
+                </label>
+            </div>
+            <div id="controls_brush_inset">
+            </div>
+            <input id="autocommit" type="checkbox" checked="true">Autocommit: </input>
+            <input id="committime" type="number" min="1" max="10" value="<%=auto_commit%>"/>sec<br/>
+            <input id="gravity" type="checkbox">Enable gravity</input><br/>
+        </div>
+        <h3><a href="#">Paint properties</a></h3>
+        <div id="controls_paint">
+
+        </div>
+        <h3><a href="#">Document properties</a></h3>
+        <div>
+        </div>
+        <h3><a href="#">Performace</a></h3>
+        <div id="controls_debug">
+            <input id="debug" type="checkbox">Enable debug output</input><br/>
+            <div class="ui-state-highlight ui-corner-all">
+                <p>
+                    <span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>
+                    Changing the values below will reset the simulation.
+                </p>
+            </div>
+            <br/>
+        </div>
+    </div>
+  </script>
+
+  <script type="text/javascript" src="thirdparty/jquery-1.7.2.min.js"></script>
+  <script type="text/javascript" src="thirdparty/jquery.timers.js"></script>
+  <script type="text/javascript" src="thirdparty/jquery.session.js"></script>
+  <script type="text/javascript" src="thirdparty/jquery-ui-1.8.21.custom.min.js"></script>
+  <script type="text/javascript" src="thirdparty/json2.js"></script>
+  <script type="text/javascript" src="thirdparty/underscore-min.js"></script>
+  <script type="text/javascript" src="thirdparty/backbone-min.js"></script>
+  <script type="text/javascript" src="thirdparty/Three.js"></script>
+  <script type="text/javascript" src="thirdparty/Detector.js"></script>
+  <script type="text/javascript" src="farbtastic/farbtastic.js"></script>
+  <script type="text/javascript" src="js/wglutils.js"></script>
+  <script type="text/javascript" src="js/particles.js"></script>
+  <script type="text/javascript" src="js/brush.js"></script>
+  <script type="text/javascript" src="js/stuff.js"></script>
+  <script type="text/javascript" src="js/application.js"></script>
+</body>
+</html>
