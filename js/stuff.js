@@ -251,8 +251,8 @@ var ControlsView = Backbone.View.extend ({
                 hide_auto_button: true,
                 value_filter: function (value) {
                     if (canvas) {
-                        var w = 64.0 * value / canvas.document.width;
-                        var h = 64.0 * value / canvas.document.height;
+                        var w = 64.0 * value / canvas.paper.width;
+                        var h = 64.0 * value / canvas.paper.height;
                         canvas.paper.border.set (w, h, w, h);
                     }
                     
@@ -396,8 +396,8 @@ var ControlsView = Backbone.View.extend ({
             // FIXME There must be some more elegant way through this...
             var widthbk  = $("#canvas").width ();
             var heightbk = $("#canvas").height ();
-            $("#canvas").width (this.canvas.document.width);
-            $("#canvas").height (this.canvas.document.height);
+            $("#canvas").width (this.canvas.paper.width);
+            $("#canvas").height (this.canvas.paper.height);
             this.canvas.resized ();
             
             // Render the scene with identity transform.

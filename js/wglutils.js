@@ -49,8 +49,8 @@ MyWglStuff = function (canvas) {
             renderer.autoClear = false;
             renderer.setClearColor (new THREE.Color (0x000000), 255);
             
-        var PLANE_W = canvas.document.width;
-        var PLANE_H = canvas.document.height;
+        var PLANE_W = canvas.paper.width;
+        var PLANE_H = canvas.paper.height;
         var RTTscale = 4;
 
         canvas.wgl = {
@@ -274,12 +274,12 @@ MyWglStuff = function (canvas) {
             var rtt1 = wgl.rtt_stroke;
 
             var txmul = new THREE.Vector2 (
-                1.0 / canvas.document.width,
-                1.0 / canvas.document.height
+                1.0 / canvas.paper.width,
+                1.0 / canvas.paper.height
             );
             var txstep = new THREE.Vector2 (
-                1.0 / canvas.document.width,
-                1.0 / canvas.document.height
+                1.0 / canvas.paper.width,
+                1.0 / canvas.paper.height
             );
 
             //var perm = cfg.perm_tex;     // Permutation matrix.
@@ -325,7 +325,7 @@ MyWglStuff = function (canvas) {
             // Canvas plane mesh to render onto the screen.
             wgl.plane = new THREE.Mesh (
                 new THREE.PlaneGeometry (
-                    canvas.document.width, canvas.document.height
+                    canvas.paper.width, canvas.paper.height
                 ),
                 wgl.material2
             );
@@ -382,7 +382,7 @@ MyWglStuff = function (canvas) {
             
             // Effects plane mesh to render onto the screen.
             wgl.plane1 = new THREE.Mesh (
-                new THREE.PlaneGeometry (canvas.document.width, canvas.document.height),
+                new THREE.PlaneGeometry (canvas.paper.width, canvas.paper.height),
                 wgl.material5
             );
 
@@ -426,8 +426,8 @@ MyWglStuff = function (canvas) {
 
             // Texture dimentions.
             var txmul = new THREE.Vector2 (
-                1.0 / canvas.document.width,
-                1.0 / canvas.document.height
+                1.0 / canvas.paper.width,
+                1.0 / canvas.paper.height
             );
 
             // Define the pointer material.

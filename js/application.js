@@ -94,14 +94,6 @@
             // Brush object.
             this.brush = null;
             this.brush_wetness = 0.9;
-
-            /**
-             * Document description.
-             */
-            this.document = {
-                width:  800,
-                height: 600
-            };
             
             /**
               * Paint parameter.
@@ -137,6 +129,9 @@
              * Paper description.
              */
             this.paper = {
+                width:  800,
+                height: 600,
+
                 color:    WHITE.clone(),                    // Paper color.
                 texture:  0.1,                              // Texture amplitude. FIXME Not implemented.
                 // Masked border size and color.
@@ -759,8 +754,8 @@
             }
             if (drawCircle && U5 && this.brush && this.brush.pointer_mesh) {
                 U5.circle.value.set (
-                    this.brush.pointer_mesh.position.x / this.document.width + 0.5,
-                    0.5 - this.brush.pointer_mesh.position.z / this.document.height,
+                    this.brush.pointer_mesh.position.x / this.paper.width + 0.5,
+                    0.5 - this.brush.pointer_mesh.position.z / this.paper.height,
                     0.05,
                     this.commit_timer / this.COMMIT_TIME
                 );
@@ -799,7 +794,7 @@
             }
 
             // The scene will contain the cloned canvas mesh.
-            var p = new THREE.Mesh (new THREE.PlaneGeometry (this.document.width, this.document.height), wgl.material2);
+            var p = new THREE.Mesh (new THREE.PlaneGeometry (this.paper.width, this.paper.height), wgl.material2);
             p.visible = true;
             wgl.sceneRTT.add (p);
 
@@ -1273,7 +1268,7 @@
             // Try to keep the scale intact,
             // disregarding the viewport resize.
             var wgl = this.wgl;
-            wgl.zoom  = Math.max (viewW / this.document.width, viewH / this.document.height);
+            wgl.zoom  = Math.max (viewW / this.paper.width, viewH / this.paper.height);
             wgl.zoom  = Math.min (wgl.zoom, 1.0);
             wgl.camera.fov = 80.0 * wgl.zoom;
             wgl.camera.aspect = viewW / viewH;

@@ -93,18 +93,17 @@ function ParticleGrid () {
                 radius:     0,                                              // Particle radius.
                 radius2:    0,                                              // Squared value.
                 radius_max: 0,                                              //
-                mass:       0,                                              // Particle mass.
+              //mass:       0,                                              // Particle mass.
                 is_pylon:   false,                                          // Is the particle a pylon?
                 pylon:      undefined,                                      // Closest pylon.
                 id:         0,                                              // Unique particle Id.
-                //stroke_id:  0,                                              // Stroke Id.
-                flow:       0,                                              // Ability to flow.
+              //stroke_id:  0,                                              // Stroke Id.
+              //flow:       0,                                              // Ability to flow.
                 last_hash:  undefined,
                 pylon_d:    0.0,
                 majornorm:  undefined,
                 n_time:     undefined,
                 neighbours: []                                             // Neighbours list.
-                //neighbour_d:[]                                              // Distances to the neighbours.
             });
         }
     };
@@ -295,14 +294,14 @@ function ParticleGrid () {
             if (ni.position.distanceTo (point) < T &&
                 ni.is_pylon == props.is_pylon) {
                 var nic = ni.color,
-                    nim = ni.mass,
+                    nim = ni.pigment.x,
                     mm  = nim + mass;
                 if (mm > 0.001) {
                     // Mix the colors.
                     nic.mix (brush_clr, mass / mm);
 
                     // Mix the masses.
-                    ni.pigment.x = ni.mass = 0.5 * mm;
+                    ni.pigment.x = 0.5 * mm;
 
                     // Set the particle radius to the maximum one.
                     ni.radius_max = Math.max (r, ni.radius_max);
@@ -337,7 +336,7 @@ function ParticleGrid () {
         var part = pool[list.length];
         part.position      = point;
         part.last_position = point.clone ();
-        // FIXME Redundant properties.
+        // pigment = (mass, granulation, flow, unused)
         part.pigment.set (mass, props.g, flow, 0.0);                      // Pigment description (shader attribute).
         part.transform.set (                                              // Particle position and radius (shader attribute).
                 point.x,
@@ -353,19 +352,18 @@ function ParticleGrid () {
         part.radius     = r0;                                             // Particle radius.
         part.radius2    = r0 * r0;                                        // Squared value.
         part.radius_max = r;                                              //
-        part.mass       = mass;                                           // Particle mass.
+      //part.mass       = mass;                                           // Particle mass.
         part.is_pylon   = props.is_pylon;                                 // Is the particle a pylon?
         part.pylon      = undefined;                                      // Closest pylon.
         part.id         = list.length;                                    // Unique particle Id.
       //part.stroke_id  = props.stroke;                                   // Stroke Id.
-        part.flow       = flow;                                           // Ability to flow.
+      //part.flow       = flow;                                           // Ability to flow.
         part.last_hash  = undefined;
         part.pylon_d    = 0.0;
         part.majornorm  = undefined;
         part.n_time     = undefined;
         part.neighbours.length     = 0;                                   // Neighbours list.
         part.neighbours.realLength = 0;
-        //part.neighbour_d.length    = 0;                                   // Distances to the neighbours.
 
         this.addParticle (part);
         if (fUpdated) {
@@ -444,7 +442,7 @@ function ParticleGrid () {
                     var dz = pos.z - p.position.z;
                     var d2 = (dx * dx + dz * dz) / PARTICLE_H2;
                     if (d2 < 1.0) {
-                        p.density += p.mass * Wpoly6_h1 (d2);
+                        p.density += p.pigment.x * Wpoly6_h1 (d2);
                     }
 
                     // Clear the distant particles.
@@ -507,12 +505,12 @@ function ParticleGrid () {
 
                     if (d < 0.2) {
                         // Color diffusion.
-                        p.color.mix (nj.color, 0.01 * dt * p.flow);
+                        p.color.mix (nj.color, 0.01 * dt * p.pigment.z);
                         status.clr_changed++;
                     }
 
                     var Pn = K * (nj.density - REST_DENSITY);
-                    var Md = nj.mass / nj.density;
+                    var Md = nj.pigment.x / nj.density;
                     //var w  = Wpress_wisc_h1 (d);
                     var d1 = 1.0 - d;
                     var d2 = 14.32394 * d1;
@@ -572,16 +570,16 @@ function ParticleGrid () {
                 continue;
 
             // Total force and particle's acceleration.
-            tmp2.x = paint.gravity.x * p.mass;
-            tmp2.y = paint.gravity.y * p.mass;
+            tmp2.x = paint.gravity.x * p.pigment.x;
+            tmp2.y = paint.gravity.y * p.pigment.x;
             p.F.addSelf (tmp2);
             tmp2.copy (p.F).multiplyScalar (dt / p.density);
             var acceleration = tmp2;
 
             // Update the velocity.
-            p.v.addSelf (acceleration.multiplyScalar (dt)).multiplyScalar (vatt * p.flow);
-            p.flow *= 0.999;
-            p.pigment.z = p.flow;
+            p.v.addSelf (acceleration.multiplyScalar (dt)).multiplyScalar (vatt * p.pigment.z);
+            p.pigment.z *= 0.999;
+            //p.pigment.z = p.flow;
 
             p.v.multiplyScalar (dt);
             var d = Math.abs (p.v.x) + Math.abs (p.v.y);
