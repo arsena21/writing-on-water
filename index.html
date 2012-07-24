@@ -51,7 +51,7 @@
     <div class="slider_header" style="width: 100%;">
         <span id="<%=selector2%>" class="left"><%=title%>: <%=def_value%><%=measure%></span>
         <% if (!hide_auto) { %>
-        <input type="checkbox" id="<%=selector0%>" class="right" <% if (auto) { >%checked<% } %>/>
+        <input type="checkbox" id="<%=selector0%>" class="right" <% if (auto) { %>checked<% } %>/>
         <label for="<%=selector0%>" class="right">auto</label>
         <% } %>
         <div class="clear"></div>
@@ -91,7 +91,8 @@
 
         </div>
         <h3><a href="#">Document properties</a></h3>
-        <div>
+        <div id="controls_document">
+
         </div>
         <h3><a href="#">Performace</a></h3>
         <div id="controls_debug">
