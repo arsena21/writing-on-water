@@ -241,6 +241,24 @@ var ControlsView = Backbone.View.extend ({
                 auto:   true,
                 target: canvas.paint.noise
             }),
+            bordersz: new AdvancedSlider ({
+                name:    "bordersz",
+                title:   "Masked border size",
+                measure: "px",
+                value:   16,
+                min: 0,
+                max: 64,
+                hide_auto_button: true,
+                value_filter: function (value) {
+                    if (canvas) {
+                        var w = 64.0 * value / canvas.document.width;
+                        var h = 64.0 * value / canvas.document.height;
+                        canvas.paper.border.set (w, h, w, h);
+                    }
+                    
+                    return value;
+                }
+            }),
             maxparticles: new AdvancedSlider ({
                 name:    "maxparticles",
                 title:   "Max particles",
@@ -295,6 +313,7 @@ var ControlsView = Backbone.View.extend ({
         $("#controls_paint").append (this.sliders.opacity.el);
         $("#controls_paint").append (this.sliders.granulation.el);
         $("#controls_paint").append (this.sliders.noise.el);
+        $("#controls_document").append (this.sliders.bordersz.el);
         $("#controls_debug").append (this.sliders.maxparticles.el);
         $("#snapcolor").click (function () {
             if (canvas) {
@@ -370,8 +389,8 @@ var ControlsView = Backbone.View.extend ({
             var pos = cam.position.clone ();
             var rot = cam.rotation.clone ();
             var sca = cam.scale.clone ();
-            var t   = this.canvas.wgl.material2.uniforms.ftransform;
-            var tc  = t.value.clone ();
+            var U2  = this.canvas.wgl.material2.uniforms;
+            var tc  = U2.ftransform.value.clone ();
             
             // Resize the canvas to include thw whole painting.
             // FIXME There must be some more elegant way through this...
@@ -386,7 +405,8 @@ var ControlsView = Backbone.View.extend ({
             cam.lookAt (new THREE.Vector3 (0, 0, 0));
             cam.rotation.z = 0;
             
-            t.value.identity ();
+            U2.ftransform.value.identity ();      // Identity transform.
+            this.canvas.paper.borderclr.w = 0.0;  // Disable the masked border.
             this.canvas.renderGL (false);
             var strDataURI;
             if (o) {
@@ -403,7 +423,8 @@ var ControlsView = Backbone.View.extend ({
             this.canvas.resized ();
 
             // Restore the transforms.
-            t.value = tc;
+            U2.ftransform.value = tc;
+            this.canvas.paper.borderclr.w = 1.0;
             cam.position = pos;
             cam.rotation = rot;
             cam.scale    = sca;

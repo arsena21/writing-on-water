@@ -311,9 +311,11 @@ MyWglStuff = function (canvas) {
                      * };
                      */
                     renderpar0:  {type: "v4", value: new THREE.Vector4 (0.1, 0.0, 1.0, 0.0)},
-                    ftransform:  {type: "m4", value: new THREE.Matrix4 ().identity ()}
+                    ftransform:  {type: "m4", value: new THREE.Matrix4 ().identity ()},
+                    bordersz:    {type: "v4", value: canvas.paper.border},
+                    borderclr:   {type: "v4", value: canvas.paper.borderclr}
                 },
-                vertexShader: vert0,
+                vertexShader:   vert0,
                 fragmentShader: frag0,
                 
                 //depthTest: false,

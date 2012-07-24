@@ -38,9 +38,12 @@ uniform vec2 txstep;
 uniform vec4 renderpar0;        // {opacity, edgepower, bumppower, noise}
 uniform vec2 noiseoffset;       // Offset in the noise texture (to make it unique for each stroke).
 uniform vec3 lightdir;          // Light source direction.
+uniform vec4 bordersz;          // Masked border size.
+uniform vec4 borderclr;         // Masked border color.
 
 varying vec2 tx1;               // Texture coordinates.
 varying vec4 fragpos;
+
 
 const vec4 WHITE = vec4 (1.0, 1.0, 1.0, 1.0);
 
@@ -70,74 +73,12 @@ void main () {
   vec3 bmp     = texture2D (papernorm,  tx3).rgb;
   vec4 couleur = texture2D (colormap,   tx1i);    // Sum of weighted particles' colors.
   vec4 weights = texture2D (mapweights, tx1i);    // Color-field weights.
-  
-  // Paint density and granulation at fragment.
-  float density     = weights.g / weights.r;
-  float granulation = weights.b / weights.r;
-  
-  // FIXME Skip, if empty.
-  //if (density < 0.001)
-  //discard;
-  
-  // Weighted-average of the particles' colors.
-  couleur.rgb = clamp (couleur.rgb / weights.r, 0.0, 1.0);
 
-  // Pixel (color) intensity.
-  float clr_y = dot (couleur.rgb, vec3 (0.299, 0.587, 0.114));
-  // Paper depth.
-  float bmp_y = 1.0 - clamp (dot (bmp, vec3 (0.333, 0.333, 0.333)), 0.0, 1.0);
-
-  // Edge intensity of stroke pixel.
-  float edge = max (abs (w1 - w0), abs (w3 - w2)).r;
-  
-  // Granulation noise.
-  //float persist = 0.5;
-    /*
-  float ns = snoise2 (tx4 * 200.0) +
-             snoise2 (tx4 * 120.0) * persist + 
-             snoise2 (tx4 *  70.0) * persist * persist +
-             snoise2 (tx4 *  40.0) * persist * persist * persist + 
-             snoise2 (tx4 *  20.0) * persist * persist * persist * persist;
-             */
-  float gop = 0.0;                
-  float ns = 0.4 * snoise2 (tx4 * 200.0) +
-             0.3 * snoise2 (tx4 * 120.0) + 
-             0.1 * snoise2 (tx4 *  70.0) +
-             0.1 * snoise2 (tx4 *  40.0) + 
-             0.1 * snoise2 (tx4 *  20.0);
-    if (ns < 0.4)
-        ns *= 0.5;
-    else
-        gop += ns;
-
-  // Paint density should increase granulation.
+  // FIXME Paint density should increase granulation.
   float opacity         = renderpar0.r;
   float edge_intensity  = renderpar0.g;
   float bump_intensity  = renderpar0.b;
   float noise_intensity = renderpar0.a;
-  
-  // Paint density increase the opacity.
-  // FIXME Paint granulation may increase the opacity?
-  opacity = min (1.0, opacity + 0.1 * gop * granulation + 0.04 * max (0.0, density - 1.0));
-  // Granulation is higher at dense areas.
-  granulation *= (1.0 + 0.1 * density);
-  // Granulation only affects the paper caveats and
-  // is visible only on dark colors.
-  granulation *= mix (bmp_y, 1.0, gop) * (1.0 - clr_y);
-  granulation *= ns;
-  
-  density = clamp (density, 0.0, 1.0);
-  
-  // Add some noise.
-  couleur.rgb = clamp (couleur.rgb + ns * noise_intensity, 0.0, 1.0);
-  
-  // Scattering component.
-  vec3 S = mix (WHITE.rgb, couleur.rgb, density);
-       // Apply the paint granulation.
-       S *= 1.0 - min (0.9, granulation);
-       
-  // Absorbing component.
-  vec3 K = mix (bg.rgb, couleur.rgb, min (1.0, density + granulation));
 
   // Expand the bump-map into a normalized signed vector.
   bmp = 2.0 * bmp - 1.0;
@@ -145,16 +86,88 @@ void main () {
   float NdotL = max (dot (bmp, lightdir), 0.0);
         NdotL = mix (1.0, NdotL, 0.1 * bump_intensity);
 
-  // Now do the colorful magic to obtain the final fragment color:
-  //
-  // Apply the opacity.
-  vec3 c = mix (S * bg.rgb, K, opacity);
-  // Darken the edges.
-  c *= 1.0 - edge_intensity * edge * (1.0 - clr_y) * sigmoid (density);
-  // Fade to BG if outside the mask.
-  c = mix (bg.rgb, c, w.r);
-  // Apply the bump map.
-  c *= NdotL;
+  // Resulting color.
+  vec3 c;
+  
+  // Distance to the masked border.
+  vec4 bordi = vec4 (tx2.xy, vec2 (1.0, 1.0) - tx2.xy);
+  if (any (lessThan (bordi, bordersz))) {
+    // BG color with bump map or colored border.
+    c = mix (bg.rgb * NdotL, borderclr.rgb, borderclr.a);
+  } else {
+    // Paint density and granulation at fragment.
+    float density     = weights.g / weights.r;
+    float granulation = weights.b / weights.r;
+  
+    // FIXME Skip, if empty.
+    //if (density < 0.001)
+    //discard;
+  
+    // Weighted-average of the particles' colors.
+    couleur.rgb = clamp (couleur.rgb / weights.r, 0.0, 1.0);
+
+    // Pixel (color) intensity.
+    float clr_y = dot (couleur.rgb, vec3 (0.299, 0.587, 0.114));
+    // Paper depth.
+    float bmp_y = 1.0 - clamp (dot (bmp, vec3 (0.333, 0.333, 0.333)), 0.0, 1.0);
+
+    // Edge intensity of stroke pixel.
+    float edge = max (abs (w1 - w0), abs (w3 - w2)).r;
+  
+    // Granulation noise.
+    //float persist = 0.5;
+    /*
+      float ns = snoise2 (tx4 * 200.0) +
+      snoise2 (tx4 * 120.0) * persist + 
+      snoise2 (tx4 *  70.0) * persist * persist +
+      snoise2 (tx4 *  40.0) * persist * persist * persist + 
+      snoise2 (tx4 *  20.0) * persist * persist * persist * persist;
+    */
+    float gop = 0.0;                
+    float ns = 0.4 * snoise2 (tx4 * 200.0) +
+      0.3 * snoise2 (tx4 * 120.0) + 
+      0.1 * snoise2 (tx4 *  70.0) +
+      0.1 * snoise2 (tx4 *  40.0) + 
+      0.1 * snoise2 (tx4 *  20.0);
+    if (ns < 0.4)
+      ns *= 0.5;
+    else
+      gop += ns;
+  
+    // Paint density increase the opacity.
+    // FIXME Paint granulation may increase the opacity?
+    opacity = min (1.0, opacity + 0.1 * gop * granulation + 0.04 * max (0.0, density - 1.0));
+    // Granulation is higher at dense areas.
+    granulation *= (1.0 + 0.1 * density);
+    // Granulation only affects the paper caveats and
+    // is visible only on dark colors.
+    granulation *= mix (bmp_y, 1.0, gop) * (1.0 - clr_y);
+    granulation *= ns;
+  
+    density = clamp (density, 0.0, 1.0);
+  
+    // Add some noise.
+    couleur.rgb = clamp (couleur.rgb + ns * noise_intensity, 0.0, 1.0);
+  
+    // Scattering component.
+    vec3 S = mix (WHITE.rgb, couleur.rgb, density);
+    // Apply the paint granulation.
+         S *= 1.0 - min (0.9, granulation);
+       
+    // Absorbing component.
+    vec3 K = mix (bg.rgb, couleur.rgb, min (1.0, density + granulation));
+
+    // Now do the colorful magic to obtain the final fragment color:
+    //
+    // Apply the opacity.
+    c = mix (S * bg.rgb, K, opacity);
+    // Darken the edges.
+    c *= 1.0 - edge_intensity * edge * (1.0 - clr_y) * sigmoid (density);
+    // Fade to BG if outside the mask.
+    c = mix (bg.rgb, c, w.r);
+    // Apply the bump map.
+    c *= NdotL;
+  }
 
   //gl_FragColor = vec4 (ns, ns, ns, 1.0);
   //gl_FragColor = vec4 (w.rgb, 1.0);

@@ -139,7 +139,9 @@
             this.paper = {
                 color:    WHITE.clone(),                    // Paper color.
                 texture:  0.1,                              // Texture amplitude. FIXME Not implemented.
-                border:   16.0                              // Masked border. FIXME Not implemented.
+                // Masked border size and color.
+                border:    new THREE.Vector4 (0.02, 0.02, 0.02, 0.02),
+                borderclr: new THREE.Vector4 (0.75, 0.8, 0.1, 1.0)
             };
             
             this.toggleDebug (false);
@@ -809,6 +811,7 @@
             u.txadd1.value.set (+0.0, +1.0);
             u.renderpar0.value.y = 0.5;     // Enable darkening of the edges.
             u.renderpar0.value.z = 0.0;     // Disable the paper bump-map.
+            this.paper.borderclr.w = 0.0;   // Disable the masked border.
 
             // Render!
             wgl.stroke.visible = false;
@@ -826,6 +829,7 @@
             // Set the stroke's opacity and noise to zero.
             u.renderpar0.value.x = 0.0;
             u.renderpar0.value.w = 0.0;
+            this.paper.borderclr.w = 1.0;
 
             // Swap the canvas textures.
             wgl.rtt_canvas = dst;
