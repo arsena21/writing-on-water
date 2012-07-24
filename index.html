@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <link rel="stylesheet" href="farbtastic/farbtastic.css" type="text/css" />
   <link rel="stylesheet" href="css/blacktie/jquery-ui-1.8.21.custom.css" type="text/css" />
-  <link rel="stylesheet" media="all" href="css/base.css" />
+  <link rel="stylesheet" media="all" href="css/base.css" type="text/css" />
   <title>Writing on Water</title>
 </head>
 <body>
@@ -39,7 +39,7 @@
   <div id="footer">
     <iframe
         src="http://markdotto.github.com/github-buttons/github-btn.html?user=grief-of-these-days&amp;repo=writing-on-water&amp;type=watch" 
-        style="overflow:hidden; border: 0;" width="62" height="20">
+        style="overflow: hidden; border: 0;" width="62" height="20">
     </iframe>
     <a href="https://github.com/mrdoob/three.js/">three.js</a>
     <a href="http://acko.net/blog/farbtastic-jquery-color-picker-plug-in">farbtastic</a>
@@ -51,7 +51,7 @@
     <div class="slider_header" style="width: 100%;">
         <span id="<%=selector2%>" class="left"><%=title%>: <%=def_value%><%=measure%></span>
         <% if (!hide_auto) { %>
-        <input type="checkbox" id="<%=selector0%>" class="right" <% if (auto) { %>checked<% } %>/>
+        <input type="checkbox" id="<%=selector0%>" class="right" <% if (auto) { >%checked<% } %>/>
         <label for="<%=selector0%>" class="right">auto</label>
         <% } %>
         <div class="clear"></div>
