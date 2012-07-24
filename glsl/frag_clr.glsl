@@ -53,6 +53,7 @@ float sigmoid (float x) {
 
 void main () {
   // Weird texcoords transformation.
+  // FIXME Arrghh... when shall I get rid of these hacks?
   vec2 tx1i = txmul1 * tx1 + txadd1;
   vec2 tx2 = fragpos.xy * vec2 (1.0, -1.0) * txmul + txadd + vec2 (0.5, 0.5);
   // Transform the coords into aspect=1:1 for paper.

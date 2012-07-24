@@ -189,10 +189,57 @@
             c.particle_tex = THREE.ImageUtils.loadTexture ('tex/radial.png');
             c.particle_tex.magFilter = THREE.LinearFilter;
             c.particle_tex.minFilter = THREE.LinearFilter;
-
+            
             // THREE.js stuff init.
             MYWGL = new MyWglStuff (this);
             MYWGL.initStuff ();
+            
+            // Declare some useful functions here.
+            var wgl   = this.wgl;
+            var mouse = this.mouse;
+            
+            /// This function is called for each updated particle
+            /// and used to keep in sync the webgl attributes.
+            this.particleChanged = function (idx, t, c, pig) {
+                var a  = wgl.attributes;
+                var vo = a.vtransform.value;
+                var vc = a.vcolor.value;
+                var vp = a.vpigment.value;
+
+                // Particle's offset and scale.
+                vo[idx + 0] = t;
+                vo[idx + 1] = t;
+                vo[idx + 2] = t;
+                vo[idx + 3] = t;
+                // Particle's color.
+                vc[idx + 0] = c;
+                vc[idx + 1] = c;
+                vc[idx + 2] = c;
+                vc[idx + 3] = c;
+                // Pigment properties.
+                vp[idx + 0] = pig;
+                vp[idx + 1] = pig;
+                vp[idx + 2] = pig;
+                vp[idx + 3] = pig;
+                
+                a.vcolor.needsUpdate     = true;
+                a.vtransform.needsUpdate = true;
+                a.vpigment.needsUpdate   = true;
+            };
+            
+            /// This function is called for each updated pylon.
+            this.pylonChanged = function (idx, t, c, pig) {
+                var p = GRID.allParticles ()[idx / 4];
+                
+                // Update the radius of each touched pylon.
+                p.radius  = p.radius_max;
+                p.radius2 = p.radius * p.radius;
+
+                // Each pylon has an associated force vector
+                // affecting particles' movement.
+                p.F.x = mouse.force.x;
+                p.F.y = mouse.force.z;
+            };
             
             (this.el).appendChild (this.wgl.renderer.domElement);
             this.animate ();
@@ -205,8 +252,13 @@
                 this.wgl.material4 &&
                 this.brush) {
                 if (this.config.first_frame) {
+                    // After all wgl-related stuff is ready, 
+                    // initialize what's rest.
                     this.config.initialized = true;
-                    this.renderGL ();
+                    if (controls) {
+                        this.setMaxParticles (controls.sliders.maxparticles.get ());
+                    }
+                    this.renderGL (true);
                     this.config.first_frame = false;
                     this.resetGlobalVectors (0.0);
 
@@ -365,7 +417,7 @@
             // Ensure that all stuff has been inited.
             if (!this.initStuff () || timeDiff < 0.001) {
                 requestAnimationFrame (this.animate);
-                this.renderGL();  
+                this.renderGL (true);  
                 return;
             }
             
@@ -445,7 +497,7 @@
 
             // Render the scene.
             requestAnimationFrame (this.animate);
-            this.renderGL();  
+            this.renderGL(true);  
         },
 
         /**
@@ -527,7 +579,7 @@
             
             return queue;
         },
-        
+                            
         processStroke: function (q) {
             var wgl   = this.wgl;
             var brush = this.brush;
@@ -543,6 +595,7 @@
                 // Stroke point.
                 var point = q[l];
                 // Pressure-based scaling factor.
+                // FIXME Brush dynamics must be parametrized.
                 var scale = brush.scale.clone().multiplyScalar (0.25 + 0.75 * point.pressure);
 
                 // Add a stroke blob.
@@ -580,32 +633,7 @@
                                 stroke: mouse.strokeId          // Stroke Id.
                             },                                  //
                             brush,                              // Brush object.
-                            function (idx, t, c, pig) {
-                                var a  = wgl.attributes;
-                                var vo = a.vtransform.value;
-                                var vc = a.vcolor.value;
-                                var vp = a.vpigment.value;
-
-                                // Particle's offset and scale.
-                                vo[idx + 0] = t;
-                                vo[idx + 1] = t;
-                                vo[idx + 2] = t;
-                                vo[idx + 3] = t;
-                                // Particle's color.
-                                vc[idx + 0] = c;
-                                vc[idx + 1] = c;
-                                vc[idx + 2] = c;
-                                vc[idx + 3] = c;
-                                // Pigment properties.
-                                vp[idx + 0] = pig;
-                                vp[idx + 1] = pig;
-                                vp[idx + 2] = pig;
-                                vp[idx + 3] = pig;
-                                
-                                a.vcolor.needsUpdate     = true;
-                                a.vtransform.needsUpdate = true;
-                                a.vpigment.needsUpdate   = true;
-                            }
+                            this.particleChanged
                         );
                         if (p) {
                             if (this.debug) {
@@ -644,9 +672,8 @@
                 }
 
                 // You must construct additional pylons!
-                for (var y = -scale.x+r; y < +scale.x; y += 2 * r) {
-                    for (var x = -scale.x+r; x < +scale.x; x += 2 * r) {
-
+                for (var y = -scale.x + r; y < +scale.x; y += 2 * r) {
+                    for (var x = -scale.x + r; x < +scale.x; x += 2 * r) {
                         var p = GRID.particlesInteract (
                             // Pylon position.
                             point.clone ().addSelf (new THREE.Vector3 (32 * x, 0, 32 * y)),
@@ -661,19 +688,7 @@
                                 stroke: mouse.strokeId      // Stroke Id.
                             },
                             brush,
-                            function (idx, t, c) {
-                                // Update the radius of each touched pylon.
-                                var p = GRID.allParticles ()[idx / 4];
-                                p.radius     = Math.max (p.radius, r * GRID.PARTICLE_R);
-                                p.radius     = Math.max (p.radius, 8);
-                                p.radius_max = p.radius;
-                                p.radius2    = p.radius * p.radius;
-
-                                // Each pylon has an associated force vector
-                                // affecting particles' movement.
-                                p.F.x = mouse.force.x;
-                                p.F.y = mouse.force.z;
-                            }
+                            this.pylonChanged
                         );
                         if (p) {
                             if (this.debug) {
@@ -690,8 +705,10 @@
 
         /**
          * Render the stroke and the scene.
+         * FIXME Add some flow maps to create the wet-in-wet feathering effects.
+         * FIXME Add the map of wetness differences to estimate the location of backruns.
          */
-        renderGL: function() {
+        renderGL: function (drawCircle) {
             var wgl = this.wgl;
             
             // Reset the background texture if needed.
@@ -701,6 +718,7 @@
             }
             
             var U2 = wgl.material2 ? wgl.material2.uniforms : undefined;
+            var U5 = wgl.material5 ? wgl.material5.uniforms : undefined;
             wgl.renderer.setClearColor (BLACK, 255);
 
             // Update the stroke texture.
@@ -736,6 +754,14 @@
             if (U2 && !wgl.stroke.needsClear) {
                 U2.renderpar0.value.x = this.paint.opacity.value;
                 U2.renderpar0.value.w = this.paint.noise.value;
+            }
+            if (drawCircle && U5 && this.brush && this.brush.pointer_mesh) {
+                U5.circle.value.set (
+                    this.brush.pointer_mesh.position.x / this.document.width + 0.5,
+                    0.5 - this.brush.pointer_mesh.position.z / this.document.height,
+                    0.05,
+                    this.commit_timer / this.COMMIT_TIME
+                );
             }
 
             // Render the scene to screen.
@@ -779,10 +805,8 @@
             var u = wgl.material2.uniforms;
             var t = u.ftransform.value.clone ();
             u.ftransform.value.identity ().scale (new THREE.Vector3 (1, -1, 1));
-            u.txmul1.value.x = 1.0;
-            u.txmul1.value.y = 1.0;
-            u.txadd1.value.x = 0.0;
-            u.txadd1.value.y = 0.0;
+            u.txmul1.value.set (+1.0, -1.0);
+            u.txadd1.value.set (+0.0, +1.0);
             u.renderpar0.value.y = 0.5;     // Enable darkening of the edges.
             u.renderpar0.value.z = 0.0;     // Disable the paper bump-map.
 
@@ -792,10 +816,8 @@
             wgl.sceneRTT.remove (p);
 
             // Restore the modified uniforms.
-            u.txmul1.value.x = +1.0;
-            u.txmul1.value.y = -1.0;
-            u.txadd1.value.x = +0.0;
-            u.txadd1.value.y = +1.0;
+            u.txmul1.value.set (1.0, 1.0);
+            u.txadd1.value.set (0.0, 0.0);
             u.ftransform.value = t;
             u.renderpar0.value.y = 0.0;
             u.renderpar0.value.z = 1.0;
@@ -899,7 +921,7 @@
             }
 
             var l1 = new THREE.Vector3 (1.0, 5.0, 1.0);
-            GRAVITY.set (0, 0, g);
+            GRAVITY.set (0, g, 0);
             
             var a = canvas.wgl.camera.rotation.z;
             var m = new THREE.Matrix4 ().identity ().rotateY (a);
@@ -952,6 +974,7 @@
             this.mouseActionTranslate (mouse, v.clone ());
 
             GRID.MAX_PARTICLES = n;
+            GRID.allocatePool ();
         },
 
         mouseDown: function (e){
@@ -1069,7 +1092,8 @@
                 Math.atan2 (mouse.y, mouse.x) - 
                 Math.atan2 (v.y, v.x)
             );
-            c.rotation.getRotationFromMatrix (c.matrix);
+            //c.rotation.getRotationFromMatrix (c.matrix);
+            c.rotation.setEulerFromRotationMatrix (c.matrix);
 
             this.resetGlobalVectors (GRAVITY.length ());
             this.cameraUpdate (c);
@@ -1122,14 +1146,17 @@
         mouseActionHover: function (mouse, v) {
             var cam = this.wgl.camera;
             var br  = this.brush;
+            var wgl = this.wgl;
             if (!br) {
                 return;
             }
             
             // Find the intersection with canvas plane in world space. %)
-            this.wgl.projector.unprojectVector (v, cam);
-            var ray = new THREE.Ray (cam.position, v.subSelf (cam.position).normalize());
-            var intersects = ray.intersectObject (this.wgl.plane);
+            wgl.projector.unprojectVector (v, cam);
+            //var ray = new THREE.Ray (cam.position, v.subSelf (cam.position).normalize());
+            wgl.ray.origin = cam.position;
+            wgl.ray.direction = v.subSelf (cam.position).normalize();
+            var intersects = wgl.ray.intersectObject (wgl.plane);
             if (intersects.length == 0) {
                 if (br.isReady ()) {
                     br.pointer_mesh.visible = false;
@@ -1163,24 +1190,26 @@
                     mouse.strokeQueue.push (point);
                     
                     if (status) {
-                        var s = 'Painting at (';
-                            s += Math.round (point.x);
-                            s += ', ';
-                            s += Math.round (point.z);
-                            s += ') with wetness ';
-                            s += br.water.toFixed(2);
-                            s += ' and pressure ';
-                            s += point.pressure.toFixed(2);
-                        status.set (s, true);
+                        var s = [];
+                        s.push ('Painting at (');
+                        s.push ('' + Math.round (point.x));
+                        s.push (', ');
+                        s.push ('' + Math.round (point.z));
+                        s.push (') with wetness ');
+                        s.push ('' + br.water.toFixed(2));
+                        s.push (' and pressure ');
+                        s.push ('' + point.pressure.toFixed(2));
+                        status.set (s.join (''), true);
                     }
                 } else {
                     if (status) {
-                        var s = 'Hover at (';
-                            s += Math.round (point.x);
-                            s += ', ';
-                            s += Math.round (point.z);
-                            s += ')';
-                        status.set (s, true);
+                        var s = [];
+                        s.push ('Hover at (');
+                        s.push ('' + Math.round (point.x));
+                        s.push (', ');
+                        s.push ('' + Math.round (point.z));
+                        s.push (')');
+                        status.set (s.join (''), true);
                     }
                 }
             }
@@ -1249,7 +1278,9 @@
             wgl.renderer.setSize (viewW, viewH);
         },
         
-        /// Set a new instrument template.
+        /**
+         * Set a new instrument template.
+         */
         setInstrument: function (template) {
             var i = this.instrument;
             

@@ -148,6 +148,11 @@ var AdvancedSlider = Backbone.View.extend ({
         if (this.target) {
             this.target.value = v;
         }
+    },
+    
+    /// Get the slider's value.
+    get: function () {
+        return this.$("#" + this.name + "_slider").slider ("value");
     }
 });
 
@@ -310,7 +315,7 @@ var ControlsView = Backbone.View.extend ({
     toggleGravity: function () {
         if (this.canvas) {
             if (jQuery("#gravity:checked").val ()) {
-                this.canvas.resetGlobalVectors (1.0);
+                this.canvas.resetGlobalVectors (0.2);
             } else {
                 this.canvas.resetGlobalVectors (0.0);
             }
@@ -382,7 +387,7 @@ var ControlsView = Backbone.View.extend ({
             cam.rotation.z = 0;
             
             t.value.identity ();
-            this.canvas.renderGL ();
+            this.canvas.renderGL (false);
             var strDataURI;
             if (o) {
                 // Try JPEG first...

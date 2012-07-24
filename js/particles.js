@@ -30,8 +30,8 @@
 function ParticleGrid () {
     var PARTICLE_R     = 32;        // Normal particle radius.
     var PARTICLE_R2    = 32 * 32;   // Squared value.
-    var PARTICLE_H     = 48;        // Radius of the smoothing kernel.
-    var PARTICLE_H2    = 48 * 48;   // Squared value.
+    var PARTICLE_H     = 32;        // Radius of the smoothing kernel. FIXME Further investigation is needed.
+    var PARTICLE_H2    = 32 * 32;   // Squared value.
     var REST_DENSITY   = 1.0;       // Particle rest density.
     /**
       * @const */
@@ -47,8 +47,10 @@ function ParticleGrid () {
     var w1 = 1.0 / w;
     var h1 = 1.0 / h;
 
-    var grid = {};
+    var grid = [];//{};
     var list = [];
+    var pool = [];
+    //var idcounter = 0;
 
     /**
       * Neighbouring cells offsets.
@@ -64,13 +66,49 @@ function ParticleGrid () {
 
     this.time = new Date().getTime();
     
+    // FIXME I try to keep the indices positive although it seems there's no need for it.
     this.hash = function (x, z) {
-        return Math.floor (z * h1) * 1024.0 + Math.floor (x * w1);
+        return 100000.0 + Math.floor (z * h1) * 1024.0 + Math.floor (x * w1);
     };
 
     this.count = function () {
         return list.length;
     };
+    
+    /// Prepare the pool of particle objects.
+    this.allocatePool = function () {
+        pool = [];
+        for (var i = 0; i < this.MAX_PARTICLES; i++) {
+            // FIXME Per-particle opacity.
+            pool.push ({
+                position:   new THREE.Vector3 (),
+                last_position: new THREE.Vector3 (),
+                pigment:    new THREE.Vector4 (),                           // Pigment description (shader attribute).
+                transform:  new THREE.Vector4 (),                           // Particle position and radius (shader attribute).
+                rotation:   new THREE.Vector3 (),                           // Particle rotation (debug).
+                v:          new THREE.Vector2 (),                           // Velocity.
+                F:          new THREE.Vector2 (),                           // Force.
+                norm:       new THREE.Vector2 (),                           // Surface normal.
+                color:      new THREE.Color (),                             // Particle color.
+                radius:     0,                                              // Particle radius.
+                radius2:    0,                                              // Squared value.
+                radius_max: 0,                                              //
+                mass:       0,                                              // Particle mass.
+                is_pylon:   false,                                          // Is the particle a pylon?
+                pylon:      undefined,                                      // Closest pylon.
+                id:         0,                                              // Unique particle Id.
+                //stroke_id:  0,                                              // Stroke Id.
+                flow:       0,                                              // Ability to flow.
+                last_hash:  undefined,
+                pylon_d:    0.0,
+                majornorm:  undefined,
+                n_time:     undefined,
+                neighbours: []                                             // Neighbours list.
+                //neighbour_d:[]                                              // Distances to the neighbours.
+            });
+        }
+    };
+    this.allocatePool ();
 
     this.addParticle = function (p) {
         var h = this.hash (p.position.x, p.position.z);
@@ -121,6 +159,7 @@ function ParticleGrid () {
         var a = grid[p.last_hash];  // Current cell.
         var b = grid[new_hash];     // New cell.
         if (!a) {                   //
+            alert ("ASSERT: grid[p.last_hash] == undefined");
             return false;           // This must never happen. x_x'
         }
         if (!b) {
@@ -145,9 +184,9 @@ function ParticleGrid () {
         
         return true;
     };
-    
+
     // Construct the list of particle's neighbours.
-    this.neighbourhood = function (p, r2) {
+    this.neighbourhood = function (p) {
         // Cache the neighbours list.
         // FIXME Time threshold is experimental.
         if (this.time - p.n_time < 100)
@@ -156,44 +195,45 @@ function ParticleGrid () {
         var pos = p.position;
 
         // Enum the neighbouring cells.
-        var n;
+        var n,
+            realLength = 0;
         if (p.neighbours) {
             n = p.neighbours;
-            n.length = 0;
+            //n.length = 0;
         } else {
             n = [];
+            p.neighbours = n;
         }
-
+        
+        realLength = 0;
+        
         var i = 8;
         var h = p.last_hash;
         do {
             var a = grid[h + pp[i]];
             if (a) {
                 // Extract all particles in the cell.
-                if (r2 == undefined) {
-                    n = n.concat (a);
-                    if (i == 0) { // (pp[i] == 0)
-                        var j = n.indexOf (p);
-                        if (j >= 0) {
-                            n.splice (j, 1);
+                if (i == 0) { // (pp[i] == 0)
+                    for (var j = 0, len = a.length; j < len; j++) {
+                        if (a[j] != p) {
+                            //n.push (a[j]);
+                            n[realLength] = a[j];
+                            realLength++;
                         }
                     }
                 } else {
-                    // Extract the particles with distance check.
+                    //n = n.concat (a);
                     for (var j = 0, len = a.length; j < len; j++) {
-                        var p1 = a[j];
-                        if (p1.position.distanceToSquared (pos) < r2) {
-                            if (p1 != p) {
-                                n.push (p1);
-                            }
-                        }
+                        //n.push (a[j]);
+                        n[realLength] = a[j];
+                        realLength++;
                     }
                 }
             }
             i--;
         } while (i >= 0);
 
-        p.neighbours = n;
+        n.realLength = realLength;
         p.n_time = this.time;
         return n;
     };
@@ -212,7 +252,7 @@ function ParticleGrid () {
         var n1 = [];
         
         // Discard the pylons.
-        for (var i = 0; i < n.length; i++) {
+        for (var i = 0; i < n.realLength; i++) {
             if (n[i].is_pylon == false) {
                 n1.push (n[i]);
             }
@@ -223,8 +263,9 @@ function ParticleGrid () {
     
     // Remove all particles.
     this.clear = function () {
-        grid = {};
+        grid = [];//{};
         list = [];
+        //idcounter = 0;
     };
 
     /**
@@ -249,7 +290,7 @@ function ParticleGrid () {
         var n = this.neighbourhood (p),
             T = props.is_pylon ? r : PARTICLE_R / 3,
             found = false;
-        for (var i = 0, len = n.length; i < len; i++) {
+        for (var i = 0, len = n.realLength; i < len; i++) {
             var ni = n[i];
             if (ni.position.distanceTo (point) < T &&
                 ni.is_pylon == props.is_pylon) {
@@ -289,38 +330,42 @@ function ParticleGrid () {
         // Initial particle radius.
         var r0 = found && flow > 0.001 ? 8.0 : r;
         
+        if (pool.length <= list.length)
+            return null;
+
         // Construct a new particle.
-        var part = {
-            position: point,
-            last_position: point.clone (),
-            pigment:   new THREE.Vector4 (mass, props.g, flow, 0.0),    // Pigment description (shader attribute).
-            transform: new THREE.Vector4 (                              // Particle position and radius (shader attribute).
+        var part = pool[list.length];
+        part.position      = point;
+        part.last_position = point.clone ();
+        // FIXME Redundant properties.
+        part.pigment.set (mass, props.g, flow, 0.0);                      // Pigment description (shader attribute).
+        part.transform.set (                                              // Particle position and radius (shader attribute).
                 point.x,
                 point.y,
                 point.z,
                 r0
-            ),
-            rotation:   new THREE.Vector3 (0.0, 0.0, 0.0),              // Particle rotation (debug).
-            v:          new THREE.Vector2 (0.0, 0.0),                   // Velocity.
-            F:          new THREE.Vector2 (0.0, 0.0),                   // Force.
-            norm:       new THREE.Vector2 (0.0, 0.0),                   // Surface normal.
-            color:      brush_clr,                                      // Particle color.
-            radius:     r0,                                             // Particle radius.
-            radius2:    r0 * r0,                                        // Squared value.
-            radius_max: r,                                              //
-            mass:       mass,                                           // Particle mass.
-            is_pylon:   props.is_pylon,                                 // Is the particle a pylon?
-            pylon:      undefined,                                      // Closest pylon.
-            id:         list.length,                                    // Unique particle Id.
-            stroke_id:  props.stroke,                                   // Stroke Id.
-            flow:       flow,                                           // Ability to flow.
-            last_hash:  undefined,
-            pylon_d:    0.0,
-            majornorm:  undefined,
-            n_time:     undefined,
-            neighbours: [],                                             // Neighbours list.
-            neighbour_d:[]                                              // Distances to the neighbours.
-        };
+            );
+        part.rotation.set (0.0, 0.0, 0.0);                                // Particle rotation (debug).
+        part.v.set (0.0, 0.0);                                            // Velocity.
+        part.F.set (0.0, 0.0);                                            // Force.
+        part.norm.set (0.0, 0.0);                                         // Surface normal.
+        part.color.copy (brush_clr);                                      // Particle color.
+        part.radius     = r0;                                             // Particle radius.
+        part.radius2    = r0 * r0;                                        // Squared value.
+        part.radius_max = r;                                              //
+        part.mass       = mass;                                           // Particle mass.
+        part.is_pylon   = props.is_pylon;                                 // Is the particle a pylon?
+        part.pylon      = undefined;                                      // Closest pylon.
+        part.id         = list.length;                                    // Unique particle Id.
+      //part.stroke_id  = props.stroke;                                   // Stroke Id.
+        part.flow       = flow;                                           // Ability to flow.
+        part.last_hash  = undefined;
+        part.pylon_d    = 0.0;
+        part.majornorm  = undefined;
+        part.n_time     = undefined;
+        part.neighbours.length     = 0;                                   // Neighbours list.
+        part.neighbours.realLength = 0;
+        //part.neighbour_d.length    = 0;                                   // Distances to the neighbours.
 
         this.addParticle (part);
         if (fUpdated) {
@@ -329,6 +374,8 @@ function ParticleGrid () {
     
         return part;
     };
+    
+    ////////////    
 
     /**
      * Calculate the forces field and update the 
@@ -359,6 +406,12 @@ function ParticleGrid () {
             return 0;
         }
         
+        var norm = new THREE.Vector2 (),
+            r    = new THREE.Vector2 (),
+            v    = new THREE.Vector2 (),
+            dv   = new THREE.Vector2 (),
+            tmp2 = new THREE.Vector2 ();
+
         // Update densities.
         for (var i = 0; i < len; i++) {
             var p = pts[i];
@@ -380,22 +433,28 @@ function ParticleGrid () {
                 
                 // Init density.
                 p.density = REST_DENSITY;
-                for (var j = 0, jlen = p.neighbours.length; j < jlen; j++) {
-                    var d2 = p.neighbours[j].position.distanceToSquared (p.position) / PARTICLE_H2;//p.radius2;
+                for (var j = 0, jlen = p.neighbours.realLength; j < jlen; j++) {
+                    if (!p.neighbours[j])
+                        continue;
+
+                    // FIXME Needs to be optimized somehow.
+                   //var d2 = p.neighbours[j].position.distanceToSquared (p.position) / PARTICLE_H2;//p.radius2;
+                    var pos = p.neighbours[j].position;
+                    var dx = pos.x - p.position.x;
+                    var dz = pos.z - p.position.z;
+                    var d2 = (dx * dx + dz * dz) / PARTICLE_H2;
                     if (d2 < 1.0) {
                         p.density += p.mass * Wpoly6_h1 (d2);
                     }
 
-                    // Cache the distance.
-                    p.neighbour_d[j] = d2;
+                    // Clear the distant particles.
+                    if (d2 > 1.0) {
+                        p.neighbours[j] = null;
+                    }
+                    //p.neighbour_d[j] = d2;
                 }
             }
         }
-    
-        var norm = new THREE.Vector2 (),
-            r    = new THREE.Vector2 (),
-            v    = new THREE.Vector2 (),
-            dv   = new THREE.Vector2 ();
 
         // Init forces.
         for (var i = 0; i < len; i++) {
@@ -413,11 +472,11 @@ function ParticleGrid () {
             var pylon = undefined;
             
             norm.set (0, 0);
-            for (var j = 0, jlen = p.neighbours.length; j < jlen; j++) {
-                if (p.neighbour_d[j] > 1.0)
+            for (var j = 0, jlen = p.neighbours.realLength; j < jlen; j++) {
+                var nj = p.neighbours[j];
+                if (!nj)
                     continue;
 
-                var nj = p.neighbours[j];
                 if (nj.is_pylon) {
                     // Add the pylon's force.
                     p.F.addSelf (nj.F);
@@ -477,21 +536,10 @@ function ParticleGrid () {
                 p.majornorm = new THREE.Vector2 (pos.x - pylon.position.x,
                                                  pos.z - pylon.position.z);
 
-                //var d = norm.length ();
                 p.pylon = pylon;
-                p.stroke_id = pylon.stroke_id;
+                //p.stroke_id = pylon.stroke_id;
                 p.pylon_d = Math.sqrt (p.pylon_d);
-                //p.norm.copy (norm.multiplyScalar (1.0 / d));
                 p.norm.copy (norm.normalize ());
-                // Ignore the normals with small magnitude as they
-                // are likely to be within the stroke.
-                /*
-                if (d < 0.1) {
-                    p.pylon_d = 0.01;
-                } else {
-                    p.pylon_d = Math.sqrt (p.pylon_d);
-                }
-                */
             } else {
                 // If there's no pylon in range, use the cached one.
                 if (p.pylon) {
@@ -502,8 +550,10 @@ function ParticleGrid () {
             }
 
             // Stroke edge resistance.
-            if (p.pylon_d > 1.0)
-                p.F.addSelf (p.norm.clone ().multiplyScalar (-4.0 * Math.max (0.0, (p.pylon_d - 0.9) / 0.1)));
+            if (p.pylon_d > 1.0) {
+                tmp2.copy (p.norm).multiplyScalar (-4.0 * Math.max (0.0, (p.pylon_d - 0.9) / 0.1));
+                p.F.addSelf (tmp2);
+            }
         }
 
         // Velocity attenuation is fixed.
@@ -518,10 +568,15 @@ function ParticleGrid () {
                 p.rotation.y = Math.atan2 (p.F.x, p.F.y);
                 continue;
             }
+            if (!p.pylon)
+                continue;
 
             // Total force and particle's acceleration.
-            p.F.addSelf (paint.gravity.clone().multiplyScalar (p.mass));
-            var acceleration = p.F.clone().multiplyScalar (dt / p.density);
+            tmp2.x = paint.gravity.x * p.mass;
+            tmp2.y = paint.gravity.y * p.mass;
+            p.F.addSelf (tmp2);
+            tmp2.copy (p.F).multiplyScalar (dt / p.density);
+            var acceleration = tmp2;
 
             // Update the velocity.
             p.v.addSelf (acceleration.multiplyScalar (dt)).multiplyScalar (vatt * p.flow);
@@ -549,23 +604,21 @@ function ParticleGrid () {
                     status.pos_changed++;
                 }
 
-                p.rotation.y = p.flow;
+                //p.rotation.y = p.flow;
                 p.transform.set (pos.x, pos.y, pos.z, p.radius);
 
-                /*
-                if (p.pylon) {
-                    var r = p.pylon.position.clone().subSelf (p.position);
-                    p.rotation.y = Math.atan2 (r.x, r.z);
-                } else {
-                    p.rotation.y = Math.atan2 (p.v.x, p.v.y);
-                  //p.rotation.y = Math.atan2 (p.norm.x, p.norm.z);
-                }
-                */
+                //if (p.pylon) {
+                //    var r = p.pylon.position.clone().subSelf (p.position);
+                //    p.rotation.y = Math.atan2 (r.x, r.z);
+                //} else {
+                //    p.rotation.y = Math.atan2 (p.v.x, p.v.y);
+                //   p.rotation.y = Math.atan2 (p.norm.x, p.norm.z);
+                //}
             } else {
                 p.transform.w = p.radius;
             }
         }
-    
+
         return 1;
     };
 };

@@ -32,6 +32,7 @@ varying vec2 tx1;
 /**
  * These fragments will be additively blended
  * in the accumulator buffer.
+ * FIXME Multiple render targets might be used here if available.
  */
 void main () {
     float a = texture2D (alphamap, tx1).a;

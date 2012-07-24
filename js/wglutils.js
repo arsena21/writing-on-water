@@ -78,7 +78,9 @@ MyWglStuff = function (canvas) {
             sceneDebug: new THREE.Scene(),
             sceneRTT:   new THREE.Scene(),
             
-            projector: new THREE.Projector (),
+            // Auxilary stuff to find the pen position on a canvas plane.
+            projector:  new THREE.Projector (),
+            ray:        new THREE.Ray (),
             
             // Two canvas textures for ping-pong rendering.
             // These will represent user's artwork in its current state.
@@ -111,7 +113,7 @@ MyWglStuff = function (canvas) {
             
             // Backdrop mesh.
             backdrop: new THREE.Mesh (
-                new THREE.PlaneGeometry (4096, 4096, 32, 32),
+                new THREE.PlaneGeometry (4096, 4096, 8, 8),
                 new THREE.MeshBasicMaterial ({
                     color: 0xbbbbbb,
                     map: THREE.ImageUtils.loadTexture ('tex/backdrop.jpg')
@@ -295,8 +297,8 @@ MyWglStuff = function (canvas) {
                     mapweights:  {type: "t",  value: 5, texture: wgl.rtt_acc1},         // Color map weights.
                     txadd:       {type: "v2", value: new THREE.Vector2()},              // Texcoords transform 0.
                     txmul:       {type: "v2", value: txmul},                            // Texcoords transform 0.
-                    txadd1:      {type: "v2", value: new THREE.Vector2(0.0, 1.0)},      // Texcoords transform 1.
-                    txmul1:      {type: "v2", value: new THREE.Vector2(1.0, -1.0)},     // Texcoords transform 1.
+                    txadd1:      {type: "v2", value: new THREE.Vector2(0.0, 0.0)},      // Texcoords transform 1.
+                    txmul1:      {type: "v2", value: new THREE.Vector2(1.0, 1.0)},      // Texcoords transform 1.
                     txstep:      {type: "v2", value: txstep},                           // Single pixel step.
                     noiseoffset: {type: "v2", value: new THREE.Vector2 (0, 0)},         // Noise texture offset.
                     lightdir:    {type: "v3", value: new THREE.Vector3 (0, 1, 0)},      // Light direction.
@@ -362,11 +364,12 @@ MyWglStuff = function (canvas) {
             // Effects shader material.
             wgl.material5 = new THREE.ShaderMaterial( {
                 uniforms: {
-                    mask:        {type: "t",  value: 0, texture: rtt1},                 // Stroke mask.
-                    ftransform:  {type: "m4", value: new THREE.Matrix4 ().identity ()}, // Fragments transform.
-                    txmul:       {type: "v2", value: txmul},                            // Texcoords transform.
-                    shinea:      {type: "f",  value: 0.0},                              // Shiny line intencity.
-                    shineln:     {type: "v4", value: new THREE.Vector4 (0, 0, 0, 1)}    // Shiny line equation.
+                    mask:        {type: "t",  value: 0, texture: rtt1},                         // Stroke mask.
+                    ftransform:  {type: "m4", value: new THREE.Matrix4 ().identity ()},         // Fragments transform.
+                    txmul:       {type: "v2", value: txmul},                                    // Texcoords transform.
+                    shinea:      {type: "f",  value: 0.0},                                      // Shiny line intencity.
+                    shineln:     {type: "v4", value: new THREE.Vector4 (0, 0, 0, 1)},           // Shiny line equation.
+                    circle:      {type: "v4", value: new THREE.Vector4 (0.2, 0.2, 0.1, 0.3)}    // Circular indicator state.
                 },
                 vertexShader: vert0,
                 fragmentShader: frag2,

@@ -26,22 +26,48 @@ uniform sampler2D mask;         // Stroke mask.
 uniform float shinea;           // Shiny line intencity.
 uniform vec4 shineln;           // Shiny line equation.
 uniform vec2 txmul;             // Fragment position transform.
+uniform vec4 circle;            // Circular indicator state (cx, cy, r, angle).
 
 varying vec2 tx1;               // Texture coordinates.
 varying vec4 fragpos;
 
-void main () {
-  vec4 w = texture2D (mask, tx1);
-  if (w.r < 0.001)
-    discard;
+const float PI = 3.14159265358979323846264;
 
+
+void main () {
+  // Fragment position.
   vec2 tx2 = fragpos.xy * txmul * vec2 (1.0, -1.0) + vec2 (0.5, 0.5);
+  // Transform the coords into aspect=1:1.
+  vec2 txnorm = max (txmul.x, txmul.y) / txmul.xy;
   
-  // Shiny line intensity in position.
-  // (point-to-line distance)
-  float g = dot (shineln.rgb, vec3 (tx2, 1.0)) * shineln.a;
-        g = max (0.0, 1.0 - 128.0 * g * g);
-        g *= shinea * w.r;
-    
-  gl_FragColor = vec4 (1.0, 1.0, 1.0, g);
+  // Final color (will be here).
+  vec4 r = vec4 (0.0, 0.0, 0.0, 0.0);
+  
+  // Invert the tex-coords.
+  // FIXME Arrghh... when shall I get rid of these hacks?
+  vec2 tx1i = vec2 (0.0, 1.0) + vec2 (1.0, -1.0) * tx1;
+  vec4 w = texture2D (mask, tx1i);
+  if (w.r > 0.001) {
+      // Shiny line intensity in position.
+      // (point-to-line distance)
+      float g = dot (shineln.rgb, vec3 (tx2, 1.0)) * shineln.a;
+            g = max (0.0, 1.0 - 128.0 * g * g);
+            g *= shinea * w.r;
+
+            r = vec4 (1.0, 1.0, 1.0, g);
+   }
+
+  // Paint the commit timer as a circle.
+  // The closest point on circle:
+  vec2 p = circle.z * normalize (tx1 - circle.xy) / txnorm;
+  if (length (tx1 - circle.xy - p) < 0.01) {
+    // If we're close enough, check the angle.
+    float a = (atan (p.y, p.x) + PI) / (2.0 * PI);
+    if (a < circle.w) {
+        // Unfinished/Disabled.
+        // r = vec4 (0.0, 0.8, 0.1, 0.5);
+    }
+  }
+
+   gl_FragColor = r;
 }
