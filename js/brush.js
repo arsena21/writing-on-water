@@ -23,53 +23,8 @@
  */
 
 /**
- * Instrument template.
- * @constructor
- */
-function Instrument () {
-    this.valid = false;
-    
-    // Whenever the instrument is changed,
-    // it's current state is saved here.
-    this.state_brush = {
-        valid: true,
-        size:  32,
-        color: 0xee0077
-    };
-    this.state_pencil = {
-        valid: true,
-        size:  1,
-        color: 0x333333
-    };
-    
-    // Change the template.
-    this.template = function (name) {
-        this.valid = false;
-        
-        switch (name) {
-        case "brush":
-            this.min_size   = 1;
-            this.max_size   = 64;
-            this.noise      = 0.0;
-            this.resistance = 0.0;
-            this.state      = this.state_brush;
-            this.valid      = true;
-            break;
-        case "pencil":
-            this.min_size   = 1;
-            this.max_size   = 8;
-            this.noise      = 1.0;
-            this.resistance = 1.0;
-            this.state      = this.state_pencil;
-            this.valid      = true;
-            break;
-        };
-    };
-};
-
-/**
  * Brush object.
- * FIMXE Store the list of used brush parameters.
+ * FIXME Store the list of used brush parameters.
  * @constructor
  */
 function Brush (wgl, callwhenready) {
@@ -89,6 +44,77 @@ function Brush (wgl, callwhenready) {
     this.basecolor = new THREE.Color (0xee0077);
     this.color     = this.basecolor.clone ();
     this.pigment   = undefined;
+    
+    var linear = function (x) {
+        return 0.25 + 0.75 * x;
+    };
+    
+    /**
+     * Instrument template.
+     * @constructor
+     */
+    this.template = {
+        valid: false,
+
+        // Whenever the instrument is changed,
+        // it's current state is saved here.
+        state_brush: {
+            valid: true,
+            size:  32,
+            color: 0xee0077
+        },
+        state_pencil: {
+            valid: true,
+            size:  1,
+            color: 0x333333
+        },
+        
+        // Change the template.
+        set: function (name) {
+            this.valid = false;
+            
+            switch (name) {
+            case "brush":
+                this.min_size   = 1;
+                this.max_size   = 64;
+                this.noise      = 0.0;
+                this.resistance = 0.0;
+                this.drymedia   = false;
+                this.state      = this.state_brush;
+                this.valid      = true;
+                this.dynamics   = {
+                    /// Scale from pressure.
+                    scale: function (value, pressure) {
+                        return value.multiplyScalar (linear (pressure));
+                    },
+                    /// Opacity from pressure.
+                    opacity: function (value, pressure) {
+                        return value;
+                    }
+                };
+                break;
+            case "pencil":
+                this.min_size   = 1;
+                this.max_size   = 8;
+                this.noise      = 1.0;
+                this.resistance = 1.0;
+                this.drymedia   = true;
+                this.state      = this.state_pencil;
+                this.valid      = true;
+                this.dynamics   = {
+                    /// Scale from pressure.
+                    scale: function (value, pressure) {
+                        return value;
+                    },
+                    /// Opacity from pressure.
+                    opacity: function (value, pressure) {
+                        return value * linear (pressure);
+                    }
+                };
+                break;
+            };
+        }
+    };
 
     this.pointer_tex = THREE.ImageUtils.loadTexture ('tex/pointer.png', {}, function() {
         // Define the pointer material.

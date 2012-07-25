@@ -153,9 +153,8 @@
             this.auto_commit  = true;
             this.invalidated  = false;                      // Indicates that there's some uncommited data.
             this.commit_timer = 0;                          // Time left before the wet layer commit.
+            this.postcommit   = 0;                          // Time left after commit timer elapsed.
             this.shiney = 0.0;                              // Shiny bar's state.
-            
-            this.instrument = new Instrument ();
           
             // Load the shaders.
             new MyLoader ("glsl/frag_tx.glsl",   "frag_tx",   status, this.config.shaders);
@@ -448,18 +447,28 @@
             // Check if it is time to commit a wet layer.
             if (Q.length) {
                 // Reset the timer if user is active.
-                this.commit_timer = this.COMMIT_TIME;
+                if (this.brush.template.drymedia) {
+                    this.commit_timer = 2;
+                } else {
+                    this.commit_timer = this.COMMIT_TIME;
+                }
+                this.postcommit = 0;
             } else {
                 this.commit_timer = Math.max (this.commit_timer - timeDiff, 0);
                 if (this.commit_timer < 2 && this.invalidated && this.auto_commit) {
                     // We shouldn't commit the layer
                     // until the particles converge. (?)
-                    // FIXME If we should wait, time interval must be restricted.
                     if (s.pos_changed) {
                         this.commit_timer = 1;
+                        this.postcommit++;
+                        // If we should wait, time interval must be restricted.
+                        if (this.postcommit > 200) {
+                            this.commitGL ();
+                            this.postcommit = 0;
+                        } else
                         if (status) {
                             status.set (
-                                "Waiting for particles to slow down...",
+                                "Waiting for particles to slow down (" + this.postcommit + ")...",
                                 false
                             );
                         }
@@ -467,7 +476,7 @@
                         this.commitGL ();
                 }
                 
-                if (status && this.auto_commit) {
+                if (status && this.auto_commit && this.commit_timer > 1) {
                     status.set (
                         "Commit timer: " + this.commit_timer,
                         false
@@ -582,6 +591,7 @@
             var brush = this.brush;
             var mouse = this.mouse;
             var paint = this.paint;
+            var instr = brush.template;
             
             for (var l = 0; l < q.length; l++) {
                 if (GRID.count () >= GRID.MAX_PARTICLES) {
@@ -591,9 +601,13 @@
 
                 // Stroke point.
                 var point = q[l];
-                // Pressure-based scaling factor.
-                // FIXME Brush dynamics must be parametrized.
-                var scale = brush.scale.clone().multiplyScalar (0.25 + 0.75 * point.pressure);
+                var scale = brush.scale.clone ();
+                var mass  = brush.water;
+                // Apply the brush dynamics if available.
+                if (instr.dynamics) {
+                    scale = instr.dynamics.scale   (scale, point.pressure);
+                    mass  = instr.dynamics.opacity (mass,  point.pressure);
+                }
 
                 // Add a stroke blob.
                 var blob = new THREE.Mesh (wgl.blob_geom, wgl.material3);
@@ -603,8 +617,8 @@
                 wgl.sceneRTT.add (blob);
                 wgl.blobsRTT.push (blob);
                 
-                // Regular brush.
-                if (!brush.eraser) {
+                // Create particles and pylons.
+                if (true) {
                     // Spawn a number of randomly placed 
                     // particles within the brush stroke.
                     var r = scale.x;
@@ -622,7 +636,7 @@
                             {                                   //
                                 c:  brush.color.clone (),       // Particle color.
                                 r:  1.0,                        // Particle radius (was brush.scale.x).
-                                m:  brush.water,                // Particle mass.
+                                m:  mass,                       // Particle mass.
                                 g:  paint.granulation.value,    // Pigment granulation.
                                 f:  point.force,                // Force the particle creation.
                                 rt: paint.resistance.value,     // Paint resistance.
@@ -639,57 +653,44 @@
 
                             wgl.material3.uniforms.jagged.value.x = Math.max (0.0, 0.9 - 0.5 * brush.water);
                             wgl.material3.uniforms.jagged.value.y = Math.max (0.0, 0.9 - brush.water);
-                            brush.waterUpdate (-0.01);
-                        }
-                    }
-                // Eraser brush.
-                } else {
-                    var p = GRID.particlesAtPoint (point, GRID.PARTICLE_R);
-                    for (var i = 0; i < p.length; i++) {
-                        if (this.debug) {
-                            var pm = this.debug.dbg_pm;
-                            for (var j = 0; j < pm.length; j++) {
-                                if (pm[j].position == p[i].position) {
-                                    wgl.sceneDebug.remove (pm[j]);
-                                    pm.splice (j, 1);
-                                    break;
-                                }
+
+                            // Update the water amount in brush if wet.
+                            if (!this.brush.template.drymedia) {
+                                brush.waterUpdate (-0.01);
                             }
                         }
-
-                        GRID.removeParticle (p[i]);
                     }
-                }
-                
-                var r = Math.min (1.0, scale.x);
-                var n = 1;
-                if (scale.x > 1.0) {
-                    n = Math.round (scale.x / r) + 1;
-                    r = scale.x / n;
-                }
 
-                // You must construct additional pylons!
-                for (var y = -scale.x + r; y < +scale.x; y += 2 * r) {
-                    for (var x = -scale.x + r; x < +scale.x; x += 2 * r) {
-                        var p = GRID.particlesInteract (
-                            // Pylon position.
-                            point.clone ().addSelf (new THREE.Vector3 (32 * x, 0, 32 * y)),
-                            {                               //
-                                c:  brush.color.clone (),   // Ignored.
-                                r:  r,                      // Pylon radius.
-                                m:  0.0,                    // Pylons have no mass.
-                                f:  false,                  // Pylons are never forced.
-                                g:  0.0,                    // Ignored.
-                                rt: 0.0,                    // Paint resistance.
-                                is_pylon: true,             // A pylon.
-                                stroke: mouse.strokeId      // Stroke Id.
-                            },
-                            brush,
-                            this.pylonChanged
-                        );
-                        if (p) {
-                            if (this.debug) {
-                                this.debug.addPylon (p);
+                    var r = Math.min (1.0, scale.x);
+                    var n = 1;
+                    if (scale.x > 1.0) {
+                        n = Math.round (scale.x / r) + 1;
+                        r = scale.x / n;
+                    }
+
+                    // You must construct additional pylons!
+                    for (var y = -scale.x + r; y < +scale.x; y += 2 * r) {
+                        for (var x = -scale.x + r; x < +scale.x; x += 2 * r) {
+                            var p = GRID.particlesInteract (
+                                // Pylon position.
+                                point.clone ().addSelf (new THREE.Vector3 (32 * x, 0, 32 * y)),
+                                {                               //
+                                    c:  brush.color.clone (),   // Ignored.
+                                    r:  r,                      // Pylon radius.
+                                    m:  0.0,                    // Pylons have no mass.
+                                    f:  false,                  // Pylons are never forced.
+                                    g:  0.0,                    // Ignored.
+                                    rt: 0.0,                    // Paint resistance.
+                                    is_pylon: true,             // A pylon.
+                                    stroke: mouse.strokeId      // Stroke Id.
+                                },
+                                brush,
+                                this.pylonChanged
+                            );
+                            if (p) {
+                                if (this.debug) {
+                                    this.debug.addPylon (p);
+                                }
                             }
                         }
                     }
@@ -719,8 +720,15 @@
             wgl.renderer.setClearColor (BLACK, 255);
 
             // Update the stroke texture.
-            // FIXME Dry instruments should paint directly on rtt_canvas.
             if (wgl.blobsRTT.length) {
+                // Update the blob color.
+                wgl.material3.attributes.vcolor.needsUpdate = true;
+                var v = wgl.material3.attributes.vcolor.value;
+                v[0].setRGB (1.0, 0, this.mouse.strokeId / 1.0);
+                v[1].copy (v[0]);
+                v[2].copy (v[0]);
+                v[3].copy (v[0]);
+                
                 // Render the blobs and clear the texture if needed.
                 wgl.stroke.visible = false;
                 wgl.renderer.render (wgl.sceneRTT, wgl.cameraRTT, wgl.rtt_stroke, wgl.stroke.needsClear);
@@ -742,8 +750,8 @@
                 // FIXME This accumulator thing is not very fast and has to use float textures...
                 wgl.renderer.setClearColor (WHITE, 1);
                 wgl.renderer.render (wgl.sceneRTT, wgl.cameraRTT, wgl.rtt_acc, true);
-                wgl.material4.uniforms.writealpha.value = 1;
                 wgl.renderer.setClearColor (new THREE.Color (0xff0001), 0);
+                wgl.material4.uniforms.writealpha.value = 1;
                 wgl.renderer.render (wgl.sceneRTT, wgl.cameraRTT, wgl.rtt_acc1, true);
             }
 
@@ -775,6 +783,9 @@
 
         /**
           * Update the canvas texture with new stroke.
+          * There is some white magic in this method,.. but in general,
+          * it changes some rendering options and renders the scene onto
+          * the background.
           */
         commitGL: function() {
             if (!this.config.initialized ||
@@ -782,6 +793,7 @@
                 return;
 
             var wgl = this.wgl;
+            var drymedia = this.brush.template.drymedia;
         
             // Define the source and destination textures.
             var src, dst;
@@ -794,9 +806,8 @@
             }
 
             // The scene will contain the cloned canvas mesh.
-            var p = new THREE.Mesh (new THREE.PlaneGeometry (this.paper.width, this.paper.height), wgl.material2);
-            p.visible = true;
-            wgl.sceneRTT.add (p);
+            wgl.plane_clone.visible = true;
+            wgl.sceneRTT.add (wgl.plane_clone);
 
             // Some magic has to be done...
             var u = wgl.material2.uniforms;
@@ -804,14 +815,14 @@
             u.ftransform.value.identity ().scale (new THREE.Vector3 (1, -1, 1));
             u.txmul1.value.set (+1.0, -1.0);
             u.txadd1.value.set (+0.0, +1.0);
-            u.renderpar0.value.y = 0.5;     // Enable darkening of the edges.
-            u.renderpar0.value.z = 0.0;     // Disable the paper bump-map.
-            this.paper.borderclr.w = 0.0;   // Disable the masked border.
+            u.renderpar0.value.y = drymedia ? 0.0 : 0.5;    // Enable darkening of the edges ir wet.
+            u.renderpar0.value.z = 0.0;                     // Disable the paper bump-map.
+            this.paper.borderclr.w = 0.0;                   // Disable the masked border.
 
             // Render!
             wgl.stroke.visible = false;
             wgl.renderer.render (wgl.sceneRTT, wgl.cameraRTT, dst, true);
-            wgl.sceneRTT.remove (p);
+            wgl.sceneRTT.remove (wgl.plane_clone);
 
             // Restore the modified uniforms.
             u.txmul1.value.set (1.0, 1.0);
@@ -833,7 +844,11 @@
             // Request the stroke texture reset.
             wgl.stroke.needsClear = true;
             
-            this.shiney = 0.0;
+            if (!drymedia) {
+                // Reset the shiny line if the instrument is wet.
+                // For dry media commits are transparent to user.
+                this.shiney = 0.0;
+            }
             this.commit_timer = 0;
             this.mouse.strokeId = 0;
             
@@ -841,7 +856,7 @@
             this.removeParticles ();
             this.invalidated = false;
 
-            if (status) {
+            if (status && !drymedia) {
                 status.set (
                     "Layer commited.",
                     false
@@ -912,7 +927,7 @@
         
         /**
          * Reset the gravity and light vectors and rotate them
-         * to make them world-relative.
+         * to make them agnostic to camera movement.
          */
         resetGlobalVectors: function (g) {
             if (!canvas) {
@@ -977,29 +992,13 @@
         },
 
         mouseDown: function (e){
-            if (false) {//e.which == 3) {
-                this.brush.eraser = !this.brush.eraser;
-                status.set (
-                    'Eraser: ' + this.brush.eraser,
-                    false
-                );
-            } else {
-                var m = this.mouse;
-                m.down = true;
-                m.strokeId++;
-                m.strokeQueueDelayed.length = 0;
-                m.forceEvent = true;
+            var m = this.mouse;
+            m.down = true;
+            m.strokeId++;
+            m.strokeQueueDelayed.length = 0;
+            m.forceEvent = true;
 
-                // Update the stroke Id.
-                var a = this.wgl.material3.attributes;
-                a.vcolor.value[0].g = m.strokeId / 255.0;
-                a.vcolor.value[1].g = m.strokeId / 255.0;
-                a.vcolor.value[2].g = m.strokeId / 255.0;
-                a.vcolor.value[3].g = m.strokeId / 255.0;
-                a.vcolor.needsUpdate = true;
-
-                this.mouseMove (e);
-            }
+            this.mouseMove (e);
         },
 
         mouseUp: function () {
@@ -1152,7 +1151,6 @@
             
             // Find the intersection with canvas plane in world space. %)
             wgl.projector.unprojectVector (v, cam);
-            //var ray = new THREE.Ray (cam.position, v.subSelf (cam.position).normalize());
             wgl.ray.origin = cam.position;
             wgl.ray.direction = v.subSelf (cam.position).normalize();
             var intersects = wgl.ray.intersectObject (wgl.plane);
@@ -1165,8 +1163,8 @@
             
             // If found, queue the intersection point.
             v = intersects[0].point;
-            var point = v.clone ();
-            point.y = 1.0;
+            var point      = v.clone ();
+            point.y        = 1.0;
             point.pressure = 1.0;
             point.force    = mouse.forceEvent;
             
@@ -1281,28 +1279,30 @@
          * Set a new instrument template.
          */
         setInstrument: function (template) {
-            var i = this.instrument;
+            if (!this.brush)
+                return;
+                
+            var i = this.brush.template;
             
             // Push the instrument state.
-            if (this.brush) {
-                if (i.valid) {
-                    i.state.size  = GRID.PARTICLE_R * this.brush.scale.x;
-                    i.state.color = this.brush.basecolor.getHex ();
-                    i.state.valid = true;
-                }
+            if (i.valid) {
+                i.state.size  = GRID.PARTICLE_R * this.brush.scale.x;
+                i.state.color = this.brush.basecolor.getHex ();
+                i.state.valid = true;
             }
             
             // Commit before changing instrument.
             this.commitGL ();
             
             // Change the template.
-            i.template (template);
+            i.set (template);
             if (i.valid) {
                 // Pop the instrument state.
-                if (i.state.valid && this.brush) {
+                if (i.state.valid) {
                     var clr = "#" + i.state.color.toString(16);
                     if (controls) {
-                        controls.sliders.brushsz.set (i.state.size);
+                        controls.sliders.brushsz.range (i.min_size, i.max_size);
+                        controls.sliders.brushsz.set   (i.state.size);
                     }
                     $.farbtastic ('#picker').setColor (clr);
                 }
@@ -1316,7 +1316,7 @@
         }
     });
     
-    // Check WebGL support and create the stuff.
+    // Check for WebGL support and create stuff.
     $(document).ready (function () {
         if (!Detector.webgl) {
             $('#hint').hide ();
@@ -1326,14 +1326,7 @@
 
             Detector.addGetWebGLMessage ();
         } else {
-            // Add a mix method to the Color class.
-            THREE.Color.prototype.mix = function (target, w) {
-                var w1 = 1.0 - w;
-                this.r = this.r * w1 + target.r * w;
-                this.g = this.g * w1 + target.g * w;
-                this.b = this.b * w1 + target.b * w;
-            };
-            // Add a distanceTo method to the Color class.
+            /// Add a distanceTo method to the Color class.
             THREE.Color.prototype.distanceTo = function (target) {
                 var dx = this.r - target.r;
                 var dy = this.g - target.g;
@@ -1352,7 +1345,6 @@
                         var pig = canvas.brush.pigment;
                         
                         // If pigment is known, update the paint properties.
-                        // FIXME Restore the user-defined values if not snapped??
                         if (pig) {
                             // Update the controls.
                             if (controls) {

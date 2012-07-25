@@ -153,6 +153,32 @@ var AdvancedSlider = Backbone.View.extend ({
     /// Get the slider's value.
     get: function () {
         return this.$("#" + this.name + "_slider").slider ("value");
+    },
+    
+    /// Change the slider's value range.
+    range: function (min, max) {
+        var s  = this.$("#" + this.name + "_slider");
+        var v0 = s.slider ("value");
+        var v1;
+        
+        s.slider ("option", "min", min);
+        s.slider ("option", "max", max);
+        // Clamp the value.
+        if (v0 < min) {
+            v1 = min;
+            s.slider ("value", min);
+        }
+        if (v0 > max) {
+            v1 = max;
+            s.slider ("value", max);
+        }
+        
+        if (v1) {
+            v1 = this.filter (v1 / this.max_value);
+            if (this.target) {
+                this.target.value = v1;
+            }
+        }
     }
 });
 

@@ -298,7 +298,7 @@ function ParticleGrid () {
                     mm  = nim + mass;
                 if (mm > 0.001) {
                     // Mix the colors.
-                    nic.mix (brush_clr, mass / mm);
+                    nic.lerpSelf (brush_clr, mass / mm);
 
                     // Mix the masses.
                     ni.pigment.x = 0.5 * mm;
@@ -505,7 +505,7 @@ function ParticleGrid () {
 
                     if (d < 0.2) {
                         // Color diffusion.
-                        p.color.mix (nj.color, 0.01 * dt * p.pigment.z);
+                        p.color.lerpSelf (nj.color, 0.01 * dt * p.pigment.z);
                         status.clr_changed++;
                     }
 

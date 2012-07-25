@@ -98,13 +98,14 @@ MyWglStuff = function (canvas) {
             rtt_acc:  this.renderTarget (PLANE_W / RTTscale, PLANE_H / RTTscale, THREE.FloatType, THREE.RGBAFormat),
             rtt_acc1: this.renderTarget (PLANE_W / RTTscale, PLANE_H / RTTscale, THREE.FloatType, THREE.RGBAFormat), // LuminanceFormat
 
-          //material1: null,
-            material2: null,    // Stroke mesh material.
-            material3: null,    // Blob material.
-            material4: null,    // Accumulator material.
-            material5: null,    // Effects material.
-            plane:     null,
-            stroke:    null,
+          //material1:   null,
+            material2:   null,    // Stroke mesh material.
+            material3:   null,    // Blob material.
+            material4:   null,    // Accumulator material.
+            material5:   null,    // Effects material.
+            plane:       null,
+            plane_clone: null,
+            stroke:      null,
             
             // RTT stroke blob geometry and material
             // to render onto the stroke plane.
@@ -333,6 +334,14 @@ MyWglStuff = function (canvas) {
             wgl.plane.doubleSided = true;
             wgl.scene.add (wgl.plane);
             
+            // Clone of the canvas mesh for some RTT operations.
+            wgl.plane_clone = new THREE.Mesh (
+                new THREE.PlaneGeometry (
+                    canvas.paper.width, canvas.paper.height
+                ),
+                wgl.material2
+            );
+            
             // Accumulator shader material.
             wgl.material4 = new THREE.ShaderMaterial( {
                 uniforms: {
@@ -401,7 +410,7 @@ MyWglStuff = function (canvas) {
     this.initBlobMesh = function () {
         var cfg = canvas.config;
         if (cfg.shaders['frag_blob'] &&
-            cfg.shaders['vert_1'] &&
+            cfg.shaders['vert_blob'] &&
             cfg.paper_tex &&
             cfg.blob_tex &&
            !canvas.wgl.material3) {
@@ -437,7 +446,8 @@ MyWglStuff = function (canvas) {
                     papernorm:  {type: "t", value: 1, texture: norm},                  // Paper normal map.
                     txmul:      {type: "v2", value: txmul},                            // Texcoords transform.
                     txstep:     {type: "v2", value: new THREE.Vector2 (0.015625, 0.015625)},
-                    jagged:     {type: "v2", value: new THREE.Vector2 (1.0, 0.9)}      // Stroke roughness.
+                    jagged:     {type: "v2", value: new THREE.Vector2 (1.0, 0.9)},     // Stroke roughness.
+                    bordersz:   {type: "v4", value: canvas.paper.border}
                 },
                 vertexShader: vert,
                 fragmentShader: frag,
