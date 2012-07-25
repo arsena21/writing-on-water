@@ -22,8 +22,6 @@
  * THE SOFTWARE.
  */
 
-//uniform mat4 gtransform;        // Global transform.
-
 attribute vec3 vcolor;          // Blob color (y, strokeId, 0).
 
 varying vec2 tx1;
@@ -33,7 +31,6 @@ varying vec4 fragpos;
 void main () {
   fragpos = modelViewMatrix * vec4 (position, 1.0);
   gl_Position = projectionMatrix * fragpos;
-  //fragpos = gtransform * fragpos;
   tx1 = uv;
   fragclr = vcolor;
 }

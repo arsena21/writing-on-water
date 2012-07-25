@@ -27,6 +27,7 @@ uniform sampler2D papernorm;    // Normal map of paper texture.
 uniform vec2 txmul;             // Texcoords transform.
 uniform vec2 txstep;
 uniform vec2 jagged;            // Stroke roughness (on_edge, inside).
+uniform vec4 bordersz;          // Masked border size.
 
 varying vec2 tx1;
 varying vec3 fragclr;
@@ -40,6 +41,12 @@ void main () {
     // Transform the coords for paper texture.
     vec2 tx2 = fragpos.xy * txmul + vec2 (0.5, 0.5);
     
+    // Distance to the masked border.
+    vec4 bordi = vec4 (tx2.xy, vec2 (1.0, 1.0) - tx2.xy);
+    if (any (lessThan (bordi, bordersz))) {
+        discard;
+    }
+
     vec4 w0  = texture2D (mask, tx1 + txstep * vec2 (-1.5, +0));
     vec4 w1  = texture2D (mask, tx1 + txstep * vec2 (+1.5, +0));
     vec4 w2  = texture2D (mask, tx1 + txstep * vec2 (+0, -1.5));
