@@ -1364,6 +1364,10 @@
             controls = new ControlsView ({canvas: canvas});
             wacom_plugin = document.getElementById ("wacom-plugin");
 
+            document.onselectstart = function() {
+                return false;
+            };
+
             // "Hide hint" link.
             if ($.session.get ("hidehint")) {
                 $('#hint').hide ();

@@ -101,7 +101,7 @@ function ParticleGrid () {
               //flow:       0,                                              // Ability to flow.
                 last_hash:  undefined,
                 pylon_d:    0.0,
-                majornorm:  undefined,
+                majornorm:  new THREE.Vector2 (),
                 n_time:     undefined,
                 neighbours: []                                             // Neighbours list.
             });
@@ -360,8 +360,8 @@ function ParticleGrid () {
       //part.flow       = flow;                                           // Ability to flow.
         part.last_hash  = undefined;
         part.pylon_d    = 0.0;
-        part.majornorm  = undefined;
         part.n_time     = undefined;
+        part.majornorm.set (0.0, 0.0);
         part.neighbours.length     = 0;                                   // Neighbours list.
         part.neighbours.realLength = 0;
 
@@ -393,7 +393,9 @@ function ParticleGrid () {
         // Skip the following stages if the
         // paint cannot flow anyway.
         if (paint.resistance.value > 0.999) {
-            for (var i = 0; i < len; i++) {
+            var i = len;
+            while (--i >= 0) {
+            //for (var i = 0; i < len; i++) {
                 var p = pts[i];
                 if (p.radius < p.radius_max) {
                     p.radius = p.transform.w = p.radius_max;
@@ -411,7 +413,9 @@ function ParticleGrid () {
             tmp2 = new THREE.Vector2 ();
 
         // Update densities.
-        for (var i = 0; i < len; i++) {
+        var i = len;
+        while (--i >= 0) {
+        //for (var i = 0; i < len; i++) {
             var p = pts[i];
             if (p.radius < p.radius_max) {
                 p.radius++;
@@ -431,7 +435,9 @@ function ParticleGrid () {
                 
                 // Init density.
                 p.density = REST_DENSITY;
-                for (var j = 0, jlen = p.neighbours.realLength; j < jlen; j++) {
+                var j = p.neighbours.realLength;
+                while (--j >= 0) {
+                //for (var j = 0, jlen = p.neighbours.realLength; j < jlen; j++) {
                     if (!p.neighbours[j])
                         continue;
 
@@ -449,13 +455,15 @@ function ParticleGrid () {
                     if (d2 > 1.0) {
                         p.neighbours[j] = null;
                     }
-                    //p.neighbour_d[j] = d2;
                 }
             }
         }
 
         // Init forces.
-        for (var i = 0; i < len; i++) {
+        // FIXME This cycle is also quite time-consuming...
+        var i = len;
+        while (--i >= 0) {
+        //for (var i = 0; i < len; i++) {
             var p = pts[i];
             if (p.is_pylon) {
                 // Pylons are not affected.
@@ -470,7 +478,9 @@ function ParticleGrid () {
             var pylon = undefined;
             
             norm.set (0, 0);
-            for (var j = 0, jlen = p.neighbours.realLength; j < jlen; j++) {
+            var j = p.neighbours.realLength;
+            while (--j >= 0) {
+            //for (var j = 0, jlen = p.neighbours.realLength; j < jlen; j++) {
                 var nj = p.neighbours[j];
                 if (!nj)
                     continue;
@@ -486,10 +496,8 @@ function ParticleGrid () {
                         pylon = nj;
                     }
                     // Only accept vectors co-directed with the major normal.
-                    if (p.majornorm) {
-                        if (p.majornorm.dot (dv) > 0) {
-                            norm.addSelf (dv.normalize ());
-                        }
+                    if (p.majornorm.dot (dv) > 0) {
+                        norm.addSelf (dv.normalize ());
                     }
                 } else {
                     // Vector to the neighbour.
@@ -531,8 +539,8 @@ function ParticleGrid () {
 
             if (pylon) {
                 // Particle's major normal.
-                p.majornorm = new THREE.Vector2 (pos.x - pylon.position.x,
-                                                 pos.z - pylon.position.z);
+                p.majornorm.set (pos.x - pylon.position.x,
+                                 pos.z - pylon.position.z);
 
                 p.pylon = pylon;
                 //p.stroke_id = pylon.stroke_id;
@@ -558,7 +566,9 @@ function ParticleGrid () {
         var vatt = 0.8 * (1.0 - paint.resistance.value);
 
         // Move particles.
-        for (var i = 0; i < len; i++) {
+        var i = len;
+        while (--i >= 0) {
+        //for (var i = 0; i < len; i++) {
             var p = pts[i];
             var pos = p.position;
             if (p.is_pylon) {
@@ -570,8 +580,8 @@ function ParticleGrid () {
                 continue;
 
             // Total force and particle's acceleration.
-            tmp2.x = paint.gravity.x * p.pigment.x;
-            tmp2.y = paint.gravity.y * p.pigment.x;
+            tmp2.x = paint.gravity.x * p.pigment.x; // Fgravity * mass
+            tmp2.y = paint.gravity.y * p.pigment.x; // Fgravity * mass
             p.F.addSelf (tmp2);
             tmp2.copy (p.F).multiplyScalar (dt / p.density);
             var acceleration = tmp2;
@@ -579,7 +589,6 @@ function ParticleGrid () {
             // Update the velocity.
             p.v.addSelf (acceleration.multiplyScalar (dt)).multiplyScalar (vatt * p.pigment.z);
             p.pigment.z *= 0.999;
-            //p.pigment.z = p.flow;
 
             p.v.multiplyScalar (dt);
             var d = Math.abs (p.v.x) + Math.abs (p.v.y);
