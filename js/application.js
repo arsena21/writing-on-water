@@ -246,7 +246,8 @@
             if (this.wgl.material2 &&
                 this.wgl.material3 &&
                 this.wgl.material4 &&
-                this.brush) {
+                this.brush &&
+                this.brush.isReady ()) {
                 if (this.config.first_frame) {
                     // After all wgl-related stuff is ready, 
                     // initialize what's rest.

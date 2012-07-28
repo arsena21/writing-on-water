@@ -140,7 +140,7 @@ function Brush (wgl, callwhenready) {
     } );
 
     this.check = function () {
-        if (b.pointer_mesh) {
+        if (b.pointer_mesh && b.palette.ready) {
             b.ready = true;
             callwhenready (b);
         }
@@ -204,7 +204,11 @@ function Brush (wgl, callwhenready) {
 
                     c.setHSV (hsv1.h, hsv0.s, hsv1.v);
                 }
+            } else {
+                //alert ("ASSERT: palette::fromColor() == null.");
             }
+        } else {
+            alert ("ASSERT: this.palette == null.");
         }
         
         this.basecolor = c;
@@ -217,13 +221,16 @@ function Brush (wgl, callwhenready) {
  * @constructor
  */
 function Palette () {
-    // List of know pigments.
+    // List of known pigments.
     this.pigs = [];
+    this.ready = false;
     
     /**
      * Load the pigments list from a JSON file.
      */
     this.load = function (url) {
+        this.ready = false;
+
         var pal = this;
         jQuery.ajax ( {
             url: url,
@@ -242,6 +249,8 @@ function Palette () {
                         staining:    pig.staining
                    });
                 });
+
+                pal.ready = true;
             },
             error: function (jqXHR, textStatus, errorThrown) {
                 pal.pigs = [];
