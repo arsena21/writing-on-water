@@ -30,10 +30,8 @@
  * @constructor
  */
 function Brush (wgl, callwhenready) {
-    var b = this;
     this.ready = false;
     this.water = 1.0;
-    this.eraser = false;
     this.scale = new THREE.Vector3 (1.0, 1.0, 1.0);
     this.pointer_mesh = wgl.blob_mesh;
     this.snap_color = false;
@@ -46,7 +44,8 @@ function Brush (wgl, callwhenready) {
     this.basecolor = new THREE.Color (0xee0077);
     this.color     = this.basecolor.clone ();
     this.pigment   = undefined;
-    
+
+    var b = this;
     var linear = function (x) {
         return 0.25 + 0.75 * x;
     };
@@ -136,18 +135,21 @@ function Brush (wgl, callwhenready) {
         );
         
         b.pointer_mesh.position = new THREE.Vector3 (0, 2, 0);
-        b.check ();
     } );
 
     this.check = function () {
-        if (b.pointer_mesh && b.palette.ready) {
-            b.ready = true;
-            callwhenready (b);
+        if (this.pointer_mesh && this.palette.ready) {
+            if (!this.ready) {
+                 this.ready = true;
+
+                callwhenready (this);
+            }
         }
     };
     
     this.isReady = function () {
-        return b.ready;
+        this.check ();
+        return this.ready;
     };
     
     this.waterReset = function (wetness) {
@@ -170,9 +172,12 @@ function Brush (wgl, callwhenready) {
      * Changes the color of paint in the brush.
      */
     this.colorUpdate = function (w, c) {
+        this.color.lerpSelf (c, w);
+/*
         this.color.r = this.color.r * (1.0 - w) + c.r * w;
         this.color.g = this.color.g * (1.0 - w) + c.g * w;
         this.color.b = this.color.b * (1.0 - w) + c.b * w;
+*/
     };
     
     this.changePosition = function (pos) {
