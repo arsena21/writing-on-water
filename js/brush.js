@@ -25,6 +25,8 @@
 /**
  * Brush object.
  * FIXME Store the list of used brush parameters.
+ * FIXME Nicer prush pointer needed.
+ * FIXME Dynamic brush texture generation would be nice.
  * @constructor
  */
 function Brush (wgl, callwhenready) {

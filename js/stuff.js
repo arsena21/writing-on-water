@@ -360,7 +360,7 @@ var ControlsView = Backbone.View.extend ({
     toggleGravity: function () {
         if (this.canvas) {
             if (jQuery("#gravity:checked").val ()) {
-                this.canvas.resetGlobalVectors (0.2);
+                this.canvas.resetGlobalVectors (1.0);
             } else {
                 this.canvas.resetGlobalVectors (0.0);
             }

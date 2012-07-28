@@ -669,8 +669,8 @@
                     }
 
                     // You must construct additional pylons!
-                    for (var y = -scale.x + r; y < +scale.x; y += 2 * r) {
-                        for (var x = -scale.x + r; x < +scale.x; x += 2 * r) {
+                    for (var y = -scale.x + r; y <= +scale.x - r; y += r) {
+                        for (var x = -scale.x + r; x <= +scale.x - r; x += r) {
                             var p = GRID.particlesInteract (
                                 // Pylon position.
                                 point.clone ().addSelf (new THREE.Vector3 (32 * x, 0, 32 * y)),
@@ -888,10 +888,14 @@
          * update the pointer size.
          */
         setBrushScale: function (sz) {
-            if (this.brush) {
-                if (this.brush.isReady ()) {
-                    this.brush.scale = new THREE.Vector3 (sz, sz, sz);
-                    this.brush.pointer_mesh.scale = this.brush.scale;
+            var b = this.brush;
+            if (b) {
+                if (b.isReady ()) {
+                    b.scale = new THREE.Vector3 (sz, sz, sz);
+                    b.pointer_mesh.scale = b.scale;
+                    b.pointer_mesh.position.x = 0.0;
+                    b.pointer_mesh.position.z = 0.0;
+                    b.pointer_mesh.visible    = true;
                 }
             }
         },
@@ -935,7 +939,7 @@
             }
 
             var l1 = new THREE.Vector3 (1.0, 5.0, 1.0);
-            GRAVITY.set (0, g, 0);
+            GRAVITY.set (0, 0, g);
             
             var a = canvas.wgl.camera.rotation.z;
             var m = new THREE.Matrix4 ().identity ().rotateY (a);
