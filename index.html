@@ -38,7 +38,7 @@
   </div>
   <div id="footer">
     <iframe
-        src="http://markdotto.github.com/github-buttons/github-btn.html?user=grief-of-these-days&amp;repo=writing-on-water&amp;type=watch" 
+        src="thirdparty/github-buttons/github-btn.html?user=grief-of-these-days&amp;repo=writing-on-water&amp;type=watch" 
         style="overflow: hidden; border: 0;" width="62" height="20">
     </iframe>
     <a href="https://github.com/mrdoob/three.js/">three.js</a>
@@ -47,6 +47,19 @@
 
   <embed id="wacom-plugin" type="application/x-wacom-tablet" width="0" height="0" />
 
+  <script type="text/template" id="hint_template">
+    Hold <b>space</b> to move camera.<br/>
+    Hold <b>shift</b> to rotate camera.<br/>
+    To your right there is a panel with some useful options, grouped into the following sections.<br/>
+    <h1>Painting.</h1>
+    Here you can choose instrument template and size. <b>Pencil</b> is a simple instrument used for sketching, and
+    <b>Brush</b> is the most important instrument creating the areas of wet paint that you can interact with, mixing
+    and moving paint.
+    <h1>Paint properties.</h1>
+    <h1>Document properties.</h1>
+    <h1>Performance.</h1>
+  </script>
+  
   <script type="text/template" id="fancyslider_template">
     <div class="slider_header" style="width: 100%;">
         <span id="<%=selector2%>" class="left"><%=title%>: <%=def_value%><%=measure%></span>
@@ -117,6 +130,10 @@
   <script type="text/javascript" src="thirdparty/backbone-min.js"></script>
   <script type="text/javascript" src="thirdparty/Three.js"></script>
   <script type="text/javascript" src="thirdparty/Detector.js"></script>
+  <script type="text/javascript" src="thirdparty/ShaderExtras.js"></script>
+  <script type="text/javascript" src="thirdparty/ShaderPass.js"></script>
+  <script type="text/javascript" src="thirdparty/MaskPass.js"></script>
+  <script type="text/javascript" src="thirdparty/EffectComposer.js"></script>
   <script type="text/javascript" src="farbtastic/farbtastic.js"></script>
   <script type="text/javascript" src="js/wglutils.js"></script>
   <script type="text/javascript" src="js/particles.js"></script>

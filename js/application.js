@@ -33,7 +33,7 @@
     var LIGHT   = new THREE.Vector3 (1.0, 1.0, 5.0);
 
     // Particle system.
-    var GRID  = new ParticleGrid ();
+    var GRID = new window.ParticleGrid ();
     var MYWGL;
 
     // Constants.
@@ -157,16 +157,16 @@
             this.shiney = 0.0;                              // Shiny bar's state.
           
             // Load the shaders.
-            new MyLoader ("glsl/frag_tx.glsl",   "frag_tx",   status, this.config.shaders);
-            new MyLoader ("glsl/frag_clr.glsl",  "frag_clr",  status, this.config.shaders);
-            new MyLoader ("glsl/frag_blob.glsl", "frag_blob", status, this.config.shaders);
-            new MyLoader ("glsl/frag_acc.glsl",  "frag_acc",  status, this.config.shaders);
-            new MyLoader ("glsl/frag_eff.glsl",  "frag_eff",  status, this.config.shaders);
-            new MyLoader ("glsl/frag_edg.glsl",  "frag_edg",  status, this.config.shaders);
-            new MyLoader ("glsl/vert_1.glsl",    "vert_1",    status, this.config.shaders);
-            new MyLoader ("glsl/vert_blob.glsl", "vert_blob", status, this.config.shaders);
-            new MyLoader ("glsl/vert_tr.glsl",   "vert_tr",   status, this.config.shaders);
-            new MyLoader ("glsl/vert_acc.glsl",  "vert_acc",  status, this.config.shaders);
+            new window.MyLoader ("glsl/frag_tx.glsl",      "frag_tx",      status, this.config.shaders);
+            new window.MyLoader ("glsl/frag_clr.glsl",     "frag_clr",     status, this.config.shaders);
+            new window.MyLoader ("glsl/frag_blob.glsl",    "frag_blob",    status, this.config.shaders);
+            new window.MyLoader ("glsl/frag_acc.glsl",     "frag_acc",     status, this.config.shaders);
+            new window.MyLoader ("glsl/frag_eff.glsl",     "frag_eff",     status, this.config.shaders);
+            new window.MyLoader ("glsl/frag_sobel.glsl",   "frag_sobel",   status, this.config.shaders);
+            new window.MyLoader ("glsl/vert_1.glsl",       "vert_1",       status, this.config.shaders);
+            new window.MyLoader ("glsl/vert_blob.glsl",    "vert_blob",    status, this.config.shaders);
+            new window.MyLoader ("glsl/vert_tr.glsl",      "vert_tr",      status, this.config.shaders);
+            new window.MyLoader ("glsl/vert_acc.glsl",     "vert_acc",     status, this.config.shaders);
             
             var c = this.config;
             // Paper normal map.
@@ -187,7 +187,7 @@
             c.particle_tex.minFilter = THREE.LinearFilter;
             
             // THREE.js stuff init.
-            MYWGL = new MyWglStuff (this);
+            MYWGL = new window.MyWglStuff (this);
             MYWGL.initStuff ();
             
             // Declare some useful functions here.
@@ -596,7 +596,7 @@
             
             for (var l = 0; l < q.length; l++) {
                 if (GRID.count () >= GRID.MAX_PARTICLES) {
-                    alertBox ("warning", "Too many particles in the scene!");
+                    window.alertBox ("warning", "Too many particles in the scene!");
                     return;
                 }
 
@@ -769,7 +769,13 @@
                     this.commit_timer / this.COMMIT_TIME
                 );
             }
-
+/*
+            // Prepare the edge map.
+            if (wgl.composer_edge) {
+                wgl.composer_edge.render (0.01);
+                U2.edgemap.texture = wgl.composer_edge.readBuffer;
+            }
+*/
             // Render the scene to screen.
             wgl.scene.add (wgl.camera);
             wgl.renderer.setClearColor (BLACK, 255);
@@ -816,9 +822,13 @@
             u.ftransform.value.identity ().scale (new THREE.Vector3 (1, -1, 1));
             u.txmul1.value.set (+1.0, -1.0);
             u.txadd1.value.set (+0.0, +1.0);
-            u.renderpar0.value.y = drymedia ? 0.0 : 0.5;    // Enable darkening of the edges ir wet.
+            u.renderpar0.value.y = drymedia ? 0.0 : 0.8;    // Enable darkening of the edges, if wet.
             u.renderpar0.value.z = 0.0;                     // Disable the paper bump-map.
             this.paper.borderclr.w = 0.0;                   // Disable the masked border.
+
+            // Prepare the edge map.
+            wgl.composer_edge.render (0.01);
+            u.edgemap.texture = wgl.composer_edge.readBuffer;
 
             // Render!
             wgl.stroke.visible = false;
@@ -876,12 +886,7 @@
             wgl.renderer.setClearColor (this.paper.color, 255);
             wgl.renderer.render (wgl.sceneRTT, wgl.cameraRTT, wgl.rtt_canvas, true);
 
-            if (status) {
-                status.set (
-                    "Canvas cleared.",
-                    false
-                );
-            }
+            window.alertBox ("warning", "Canvas cleared.");
         },
         
         /**
@@ -1252,6 +1257,7 @@
         
         /**
          * Update some stuff if the canvas has beed resized.
+         * FIXME This resizing thing is still BAD.
          */
         resized: function () {
             var o = this.el;
@@ -1339,7 +1345,7 @@
                 return Math.sqrt (dx * dx + dy * dy + dz * dz);
             };
             
-            status = new StatusView ();
+            status = new window.StatusView ();
             canvas = new Canvas ();
             
             // Init color wheel.
@@ -1366,7 +1372,7 @@
                 }
             );
 
-            controls = new ControlsView ({canvas: canvas});
+            controls = new window.ControlsView ({canvas: canvas});
             wacom_plugin = document.getElementById ("wacom-plugin");
 
             document.onselectstart = function() {
