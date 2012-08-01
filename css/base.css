@@ -108,28 +108,24 @@ a:hover {
     background-color: #eee;
     padding: 16px;
     color: #333;
-    /*
-    -moz-box-shadow: 5px 5px 3px #888;
-    -webkit-box-shadow: 5px 5px 3px #888;
-    box-shadow: 5px 5px 3px #888;
-    */
 }
 #hint a {
     text-decoration: none;
 }
 
 #footer {
-    background-color: #ccb;
+    background-color: #fff;
     border-top: 1px solid #111;
     position: absolute;
     bottom: 0;
-    width: 95%;
-    margin: auto;
+    left: 0;
+    width: 100%;
 }
-#footer a {
+#footer a, #footer a:visited {
     text-decoration: none;
     vertical-align: top;
     padding-left: 8px;
+    color: black;
 }
 
 .left {
