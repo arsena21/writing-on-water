@@ -79,7 +79,7 @@
                 forceEvent: false,      // Force the mouse event to be processed.
                 strokeQueue: [],        // Buffered brush events.
                 strokeQueueDelayed: [], // Queue of the last K stroke points.
-                strokeOrigin: null,     // First point of a stroke.
+                //strokeOrigin: null,     // First point of a stroke.
                 stroke: null,           // Stroke mesh reference.
                 strokeId: 0,            // Stroke Id.
                 
@@ -246,6 +246,7 @@
             if (this.wgl.material2 &&
                 this.wgl.material3 &&
                 this.wgl.material4 &&
+                this.wgl.material5 &&
                 this.brush &&
                 this.brush.isReady ()) {
                 if (this.config.first_frame) {
@@ -319,7 +320,7 @@
                         if (!this.particle_geom) {
                             // Debug particle geometry.
                             var geometry = new THREE.Geometry();
-                            var sphere = new THREE.SphereGeometry (32.0, 4.0, 4.0);
+                            //var sphere = new THREE.SphereGeometry (32.0, 4.0, 4.0);
                             var v0 = new THREE.Vector3 (0.0, 0.0, 6.0);
                             var v1 = new THREE.Vector3 (-5.0, 0.0, -5.0);
                             var v2 = new THREE.Vector3 (+5.0, 0.0, -5.0);
@@ -428,7 +429,7 @@
             var Q     = M.strokeQueue;
 
             // Apply some shader's uniforms:
-            // shiny line:
+            // shiny line.
             U5.shinea.value = this.shiney < 1.0 ? 0.8 : 0.0;
             U5.shineln.value = new THREE.Vector4 (
                 // a, b, c, 1/(sqrt(a*a + b*b))
@@ -604,10 +605,12 @@
                 var point = q[l];
                 var scale = brush.scale.clone ();
                 var mass  = brush.water;
+                var drybrush = Math.max (0.0, 1.0 - brush.water);
                 // Apply the brush dynamics if available.
                 if (instr.dynamics) {
-                    scale = instr.dynamics.scale   (scale, point.pressure);
-                    mass  = instr.dynamics.opacity (mass,  point.pressure);
+                    scale    = instr.dynamics.scale   (scale, point.pressure);
+                    mass     = instr.dynamics.opacity (mass,  point.pressure);
+                    drybrush = instr.dynamics.drybrush ();
                 }
 
                 // Add a stroke blob.
@@ -652,8 +655,8 @@
                                 this.debug.addParticle (p);
                             }
 
-                            wgl.material3.uniforms.jagged.value.x = Math.max (0.0, 0.9 - 0.5 * brush.water);
-                            wgl.material3.uniforms.jagged.value.y = Math.max (0.0, 0.9 - brush.water);
+                            wgl.material3.uniforms.jagged.value.x = 0.5 * (0.8 + drybrush);
+                            wgl.material3.uniforms.jagged.value.y = 0.9 * drybrush;
 
                             // Update the water amount in brush if wet.
                             if (!this.brush.template.drymedia) {
@@ -1019,7 +1022,7 @@
             
             var m = this.mouse;
             m.down = false;
-            m.strokeOrigin     = null;
+            //m.strokeOrigin     = null;
             m.strokeQueueDelayed.length = 0;
         },
 
@@ -1050,11 +1053,11 @@
                     fx * Math.cos (a) + fz * Math.sin (a), 0.0, 
                    -fx * Math.sin (a) + fz * Math.cos (a)
                 );
-
+/*
                 if (!mouse.strokeOrigin) {
                      mouse.strokeOrigin = new THREE.Vector3 (x, y, 1);
                 }
-                
+*/                
                 if (e.shiftKey) {
                     // Rotate the canvas with mouse.
                     mouse.rotation = true;

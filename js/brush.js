@@ -94,6 +94,12 @@
                         /// Opacity from pressure.
                         opacity: function (value, pressure) {
                             return value;
+                        },
+                        /// Dry-brush effect from water amount.
+                        drybrush: function () {
+                            var capacity = b.scale.x;
+                            var amount   = Math.max (0.0, b.water - 1.0 + capacity);
+                            return Math.max (0.0, (capacity - amount) / capacity);
                         }
                     };
                     break;
@@ -113,6 +119,10 @@
                         /// Opacity from pressure.
                         opacity: function (value, pressure) {
                             return value * linear (pressure);
+                        },
+                        /// Dry-brush effect from water amount.
+                        drybrush: function () {
+                            return 0.0;
                         }
                     };
                     break;
@@ -166,8 +176,8 @@
          * Called when the brush is applied.
          * Changes the amount of paint in the brush.
          */
-        this.waterUpdate = function (w) {
-            this.water = Math.min (Math.max (this.water + w, 0.0), 1.0);
+        this.waterUpdate = function (dw) {
+            this.water = Math.min (Math.max (this.water + dw, 0.0), 1.0);
         };
         
         /**
