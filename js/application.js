@@ -114,14 +114,15 @@
              */
             this.paint = {
                 viscosity:   new Parameter (0.01, true),   // Paint viscosity.
-                opacity:     new Parameter (0.10, false),  // Paint opacity.
+                opacity:     new Parameter (0.10, true),   // Paint opacity.
                 granulation: new Parameter (0.50, true),   // Pigment granulation.
                 noise:       new Parameter (0.00, true),   // Luminance noise.
                 resistance:  new Parameter (0.00, true),   // Ability of the paint to flow.
                 gravity: GRAVITY,                          // Gravity vector.
                 fromPigment: function (pig) {
                     this.granulation.set (pig.granulation);
-                    this.opacity.set     (pig.opacity);
+                    // FIXME Disabled until there is per-particle opacity.
+                    //this.opacity.set     (pig.opacity);
                 }
             };
             
@@ -489,8 +490,7 @@
             // Check if the brush is ready.
             if (brush.isReady () && Q.length) {
                 // Extrapolate the points array and process the stroke.
-                this.processStroke (this.extrapolatedQueue (M, Q,
-                                    this.brush.scale.x * GRID.PARTICLE_R));
+                this.processStroke (this.extrapolatedQueue (Q));
                 
                 // Update the old points queue.
                 for (var i = 0; i < Q.length; i++) {
@@ -511,11 +511,11 @@
         /**
           * Build the list of extrapolated stroke points.
           */
-        extrapolatedQueue: function (mouse, Q, brush_r) {
+        extrapolatedQueue: function (Q) {
             var queue = [];
 
             // Init the stroke spline.
-            var Q1 = mouse.strokeQueueDelayed;
+            var Q1 = this.mouse.strokeQueueDelayed;
             var l1 = Q.length + Q1.length;
             if (l1 > 1) {
                 // Length of curve before the new points.
@@ -527,7 +527,7 @@
                 // Old points.
                 for (var i = 0; i < Q1.length; i++) {
                     var q = Q1[i];
-                    var p_cnv = new THREE.Vector2 (q.x, q.z);
+                    var p_cnv = new THREE.Vector2 (q.position.x, q.position.z);
                     if (last) {
                         l_head += last.distanceTo (p_cnv);
                     }
@@ -542,7 +542,7 @@
                 var l = l_head;
                 for (var i = 0; i < Q.length; i++) {
                     var q = Q[i];
-                    var p_cnv = new THREE.Vector2 (q.x, q.z);
+                    var p_cnv = new THREE.Vector2 (q.position.x, q.position.z);
                     if (last) {
                         l += last.distanceTo (p_cnv);
                     }
@@ -558,20 +558,26 @@
                 var spline_ppp = new THREE.SplineCurve (points_ppp);
                 
                 var linelen = 1.0 / spline_cnv.getLength ();
-                var step  = (brush_r < 4 ? 0.5 : 2.0) * linelen;
+                var step  = (this.brush.scale.x * GRID.PARTICLE_R < 4 ? 0.5 : 2.0) * linelen;
                 var start = spline_cnv.getUtoTmapping (l_head * linelen);
+                
+                if (this.brush.template.valid) {
+                    step *= this.brush.template.skip;
+                }
 
                 // Interpolate the stroke between points.
                 l = l_head;
                 last = undefined;
                 for (var x = start; x < 1.0; x += step) {
                     var c = spline_cnv.getPoint (x);
-                    var q = new THREE.Vector3 (c.x, 1.0, c.y);
+                    var q = {
+                        position: new THREE.Vector3 (c.x, 1.0, c.y),
+                        force:    force,
+                        pressure: undefined
+                    };
                     if (last) {
                         l += last.distanceTo (c);
                         q.force = false;
-                    } else {
-                        q.force = force;
                     }
 
                     var p = spline_ppp.getPoint (l * linelen);
@@ -606,16 +612,31 @@
                 var scale = brush.scale.clone ();
                 var mass  = brush.water;
                 var drybrush = Math.max (0.0, 1.0 - brush.water);
+                var pos = point.position.clone ();
+                var color = brush.color;
+                var d = instr.dynamics;
                 // Apply the brush dynamics if available.
-                if (instr.dynamics) {
-                    scale    = instr.dynamics.scale   (scale, point.pressure);
-                    mass     = instr.dynamics.opacity (mass,  point.pressure);
-                    drybrush = instr.dynamics.drybrush ();
+                if (d) {
+                    scale    = d.scale   (scale, point.pressure);
+                    mass     = d.opacity (mass,  point.pressure);
+                    drybrush = d.drybrush ();
+                
+                    // Apply itter.                
+                    pos.x += d.position_jitter (point.pressure) * (1.0 - 2.0 * Math.random ());
+                    pos.z += d.position_jitter (point.pressure) * (1.0 - 2.0 * Math.random ());
                 }
+                
+                color = instr.force_color || color;
+
+                scale.x += instr.size_jitter * (1.0 - 2.0 * Math.random ());
+                scale.x = Math.max (0.01, scale.x);
+                scale.x = Math.min (2.00, scale.x);
+                scale.y = scale.x;
+                scale.z = scale.x;
 
                 // Add a stroke blob.
                 var blob = new THREE.Mesh (wgl.blob_geom, wgl.material3);
-                    blob.position = point.clone ();
+                    blob.position = pos.clone ();
                     blob.position.z *= -1.0;
                     blob.scale = scale;
                 wgl.sceneRTT.add (blob);
@@ -627,7 +648,7 @@
                     // particles within the brush stroke.
                     var r = scale.x;
                     for (var n = r * r, r1 = r * GRID.PARTICLE_R; n >= 0; n--)  {
-                        var sample = point.clone ().addSelf (
+                        var sample = pos.clone ().addSelf (
                             new THREE.Vector3 (
                                 (Math.random () - 0.5) * r1, 0.0,
                                 (Math.random () - 0.5) * r1
@@ -638,7 +659,7 @@
                         var p = GRID.particlesInteract (
                             sample,                             // Particle position.
                             {                                   //
-                                c:  brush.color.clone (),       // Particle color.
+                                c:  color.clone (),             // Particle color.
                                 r:  1.0,                        // Particle radius (was brush.scale.x).
                                 m:  mass,                       // Particle mass.
                                 g:  paint.granulation.value,    // Pigment granulation.
@@ -677,9 +698,9 @@
                         for (var x = -scale.x + r; x <= +scale.x - r; x += r) {
                             var p = GRID.particlesInteract (
                                 // Pylon position.
-                                point.clone ().addSelf (new THREE.Vector3 (32 * x, 0, 32 * y)),
+                                pos.clone ().addSelf (new THREE.Vector3 (32 * x, 0, 32 * y)),
                                 {                               //
-                                    c:  brush.color.clone (),   // Ignored.
+                                    c:  color.clone (),         // Ignored.
                                     r:  r,                      // Pylon radius.
                                     m:  0.0,                    // Pylons have no mass.
                                     f:  false,                  // Pylons are never forced.
@@ -797,13 +818,16 @@
           * it changes some rendering options and renders the scene onto
           * the background.
           */
-        commitGL: function() {
+        commitGL: function (drymedia_force) {
             if (!this.config.initialized ||
                 !this.invalidated)
                 return;
 
             var wgl = this.wgl;
             var drymedia = this.brush.template.drymedia;
+            if (drymedia_force !== undefined) {
+                drymedia = drymedia_force;
+            }
         
             // Define the source and destination textures.
             var src, dst;
@@ -1176,10 +1200,13 @@
             
             // If found, queue the intersection point.
             v = intersects[0].point;
-            var point      = v.clone ();
-            point.y        = 1.0;
-            point.pressure = 1.0;
-            point.force    = mouse.forceEvent;
+            var point = {
+                position: v.clone (),
+                pressure: 1.0,
+                force:    mouse.forceEvent
+            };
+
+            point.position.y = 1.0;
             
             // Ping the wacom plugin, if any.
             if (wacom_plugin) {
@@ -1202,9 +1229,9 @@
                     if (status) {
                         var s = [];
                         s.push ('Painting at (');
-                        s.push ('' + Math.round (point.x));
+                        s.push ('' + Math.round (point.position.x));
                         s.push (', ');
-                        s.push ('' + Math.round (point.z));
+                        s.push ('' + Math.round (point.position.z));
                         s.push (') with wetness ');
                         s.push ('' + br.water.toFixed(2));
                         s.push (' and pressure ');
@@ -1215,9 +1242,9 @@
                     if (status) {
                         var s = [];
                         s.push ('Hover at (');
-                        s.push ('' + Math.round (point.x));
+                        s.push ('' + Math.round (point.position.x));
                         s.push (', ');
-                        s.push ('' + Math.round (point.z));
+                        s.push ('' + Math.round (point.position.z));
                         s.push (')');
                         status.set (s.join (''), true);
                     }
@@ -1297,19 +1324,25 @@
                 return;
                 
             var i = this.brush.template;
+            var drymedia = i.drymedia;
             
             // Push the instrument state.
             if (i.valid) {
-                i.state.size  = GRID.PARTICLE_R * this.brush.scale.x;
-                i.state.color = this.brush.basecolor.getHex ();
-                i.state.valid = true;
+                i.state.size    = GRID.PARTICLE_R * this.brush.scale.x;
+                i.state.color   = this.brush.basecolor.getHex ();
+                i.state.opacity = this.paint.opacity.value;
+                i.state.valid   = true;
             }
-            
-            // Commit before changing instrument.
-            this.commitGL ();
             
             // Change the template.
             i.set (template);
+            
+            if (drymedia != i.drymedia) {
+                // Commit when changing between wet and
+                // dry instruments.
+                this.commitGL (drymedia);
+            }
+            
             if (i.valid) {
                 // Pop the instrument state.
                 if (i.state.valid) {
@@ -1317,6 +1350,9 @@
                     if (controls) {
                         controls.sliders.brushsz.range (i.min_size, i.max_size);
                         controls.sliders.brushsz.set   (i.state.size);
+                        if (this.paint.opacity.auto) {
+                            controls.sliders.opacity.set (100 * i.state.opacity);
+                        }
                     }
                     $.farbtastic ('#picker').setColor (clr);
                 }

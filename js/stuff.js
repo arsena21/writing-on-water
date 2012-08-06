@@ -248,20 +248,21 @@
                 }),
                 opacity: new AdvancedSlider ({
                     name:   "opacity",
-                    title:  "Paint opacity",
+                    title:  "Opacity",
                     value:  this.def_values.opacity,
+                    auto:   true,
                     target: canvas.paint.opacity
                 }),
                 granulation: new AdvancedSlider ({
                     name:   "granulation",
-                    title:  "Paint granulation",
+                    title:  "Granulation",
                     value:  this.def_values.granulation,
                     auto:   true,
                     target: canvas.paint.granulation
                 }),
                 noise: new AdvancedSlider ({
                     name:   "noise",
-                    title:  "Luminance noise",
+                    title:  "Noise",
                     value:  this.def_values.noise,
                     auto:   true,
                     target: canvas.paint.noise
@@ -329,6 +330,12 @@
                     } else
                     if ($("#i_brush").is (":checked")) {
                         canvas.setInstrument ("brush");
+                    } else
+                    if ($("#i_splatter").is (":checked")) {
+                        canvas.setInstrument ("splatter");
+                    } else
+                    if ($("#i_eraser").is (":checked")) {
+                        canvas.setInstrument ("eraser");
                     }
                 }
             });
@@ -464,7 +471,8 @@
             if (this.canvas) {
                 var p = this.canvas.paint;
                 if (p.opacity.auto) {
-                    this.sliders.opacity.set (100 * pig.opacity);
+                    // FIXME Disabled.
+                    //this.sliders.opacity.set (100 * pig.opacity);
                 }
                 if (p.granulation.auto) {
                     this.sliders.granulation.set (100 * pig.granulation);

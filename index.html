@@ -76,8 +76,7 @@
     <div id="colorlabelwrap">Closest known pigment:<br/>
         <span id="colorsample">&nbsp;</span><span id="colorlabel"></span>
     </div>
-    <input id="snapcolor" type="checkbox">Snap color to the closest pigment.</input>
-    <br/><br/>
+    <br/>
     <button id="commit">Commit</button>
     <button id="clear">Clear</button>
     <button id="save">Save canvas</button><br/>
@@ -92,6 +91,12 @@
                 <input type="radio" id="i_brush" name="radioi" checked="checked" /><label for="i_brush">
                     <img width="16" height="16" src="css/images/brush.png" />
                 </label>
+                <input type="radio" id="i_splatter" name="radioi" /><label for="i_splatter">
+                    <img width="16" height="16" src="css/images/splatter.png" />
+                </label>
+                <input type="radio" id="i_eraser" name="radioi" /><label for="i_eraser">
+                    <img width="16" height="16" src="css/images/eraser.png" />
+                </label>
             </div>
             <div id="controls_brush_inset">
             </div>
@@ -101,6 +106,8 @@
         </div>
         <h3><a href="#">Paint properties</a></h3>
         <div id="controls_paint">
+          <input id="snapcolor" type="checkbox">Snap color.</input>
+          <br/>
 
         </div>
         <h3><a href="#">Document properties</a></h3>
