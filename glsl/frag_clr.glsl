@@ -47,6 +47,7 @@ varying vec4 fragpos;
 
 
 const vec4 WHITE = vec4 (1.0, 1.0, 1.0, 1.0);
+const vec3 YWH   = vec3 (0.299, 0.587, 0.114);
 
 float snoise2 (vec2 P);
 
@@ -109,7 +110,7 @@ void main () {
     couleur.rgb = clamp (couleur.rgb / weights.r, 0.0, 1.0);
 
     // Pixel (color) intensity.
-    float clr_y = dot (couleur.rgb, vec3 (0.299, 0.587, 0.114));
+    float clr_y = dot (couleur.rgb, YWH);
     // Paper depth.
     float bmp_y = 1.0 - clamp (dot (bmp, vec3 (0.333, 0.333, 0.333)), 0.0, 1.0);
           bmp_y *= bmp_y;
@@ -143,16 +144,23 @@ void main () {
     granulation *= mix (bmp_y, 1.0, max (0.0, 0.5 + gop - clr_y));
     granulation *= ns;
   
+    // Edges have higher density.
+    edge_intensity *= edge;
+    float density1 = density + 2.0 * edge_intensity;
     //density = clamp (density, 0.0, 1.0);
 
     // Add some noise.
     couleur.rgb = clamp (couleur.rgb + ns * noise_intensity, 0.0, 1.0);
+    
+    // Increase the color saturation in dense areas.
+    vec3 P = WHITE.rgb * sqrt (dot (couleur.rgb * couleur.rgb, YWH));
+    couleur.rgb = (couleur.rgb - P) * (1.0 + 0.2 * density1) + P;
   
     // Scattering component.
     vec3 S = mix (WHITE.rgb, couleur.rgb, min (density, 1.0));
     // Apply the paint granulation.
          S *= 1.0 - granulation;
-       
+
     // Absorbing component.
     vec3 K = mix (bg.rgb, couleur.rgb, min (1.0, density + granulation));
 
@@ -161,7 +169,7 @@ void main () {
     // Apply the opacity.
     c = mix (S * bg.rgb, K, opacity);
     // Darken the edges.
-    c *= 1.0 - edge_intensity * edge * (1.0 - clr_y) * density * density;
+    c *= 1.0 - edge_intensity * (1.0 - clr_y) * density * density;
     // Fade to BG if outside the mask.
     c = mix (bg.rgb, c, w.r);
     // Apply the bump map.
