@@ -52,6 +52,7 @@ a:hover {
     width: 100%;
     height: 95%;
     border: 1px solid black;
+    cursor: crosshair;
 }
 #canvas-wrap {
     padding: 2px;

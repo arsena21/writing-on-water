@@ -8,3 +8,5 @@ not available in OpenGL ES...
 
 #### Known Issues: ####
 - Strokes that are close to each other may have their colors mixed although they do not touch.
+- Application fails to keep the scale of the scene during resize.
+- Gravity is not working well yet.
