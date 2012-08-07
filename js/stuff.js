@@ -471,8 +471,7 @@
             if (this.canvas) {
                 var p = this.canvas.paint;
                 if (p.opacity.auto) {
-                    // FIXME Disabled.
-                    //this.sliders.opacity.set (100 * pig.opacity);
+                    this.sliders.opacity.set (100 * pig.opacity);
                 }
                 if (p.granulation.auto) {
                     this.sliders.granulation.set (100 * pig.granulation);

@@ -121,8 +121,7 @@
                 gravity: GRAVITY,                          // Gravity vector.
                 fromPigment: function (pig) {
                     this.granulation.set (pig.granulation);
-                    // FIXME Disabled until there is per-particle opacity.
-                    //this.opacity.set     (pig.opacity);
+                    this.opacity.set     (pig.opacity);
                 }
             };
             
@@ -163,6 +162,7 @@
             new window.MyLoader ("glsl/frag_blob.glsl",    "frag_blob",    status, this.config.shaders);
             new window.MyLoader ("glsl/frag_acc.glsl",     "frag_acc",     status, this.config.shaders);
             new window.MyLoader ("glsl/frag_eff.glsl",     "frag_eff",     status, this.config.shaders);
+            new window.MyLoader ("glsl/frag_norm.glsl",    "frag_norm",    status, this.config.shaders);
             new window.MyLoader ("glsl/frag_sobel.glsl",   "frag_sobel",   status, this.config.shaders);
             new window.MyLoader ("glsl/vert_1.glsl",       "vert_1",       status, this.config.shaders);
             new window.MyLoader ("glsl/vert_blob.glsl",    "vert_blob",    status, this.config.shaders);
@@ -446,6 +446,8 @@
                 if (s.clr_changed)
                     wgl.attributes.vcolor.needsUpdate = true;
             }
+            
+            //wgl.attributes.vpigment.needsUpdate = true;
 
             // Check if it is time to commit a wet layer.
             if (Q.length) {
@@ -458,7 +460,8 @@
                 this.postcommit = 0;
             } else {
                 this.commit_timer = Math.max (this.commit_timer - timeDiff, 0);
-                if (this.commit_timer < 2 && this.invalidated && this.auto_commit) {
+                if (this.commit_timer < 2 && this.invalidated &&
+                    (this.auto_commit || this.brush.template.drymedia)) {
                     // We shouldn't commit the layer
                     // until the particles converge. (?)
                     if (s.pos_changed) {
@@ -608,12 +611,13 @@
                 }
 
                 // Stroke point.
-                var point = q[l];
-                var scale = brush.scale.clone ();
-                var mass  = brush.water;
+                var point    = q[l];
+                var scale    = brush.scale.clone ();
+                var mass     = brush.water;
                 var drybrush = Math.max (0.0, 1.0 - brush.water);
-                var pos = point.position.clone ();
-                var color = brush.color;
+                var pos      = point.position.clone ();
+                var color    = brush.color;
+                var opacity  = Math.min (1.0, paint.opacity.value + instr.opacity);
                 var d = instr.dynamics;
                 // Apply the brush dynamics if available.
                 if (d) {
@@ -663,6 +667,7 @@
                                 r:  1.0,                        // Particle radius (was brush.scale.x).
                                 m:  mass,                       // Particle mass.
                                 g:  paint.granulation.value,    // Pigment granulation.
+                                o:  opacity,                    // Pigment opacity.
                                 f:  point.force,                // Force the particle creation.
                                 rt: paint.resistance.value,     // Paint resistance.
                                 is_pylon: false,                // Not a pylon.
@@ -705,6 +710,7 @@
                                     m:  0.0,                    // Pylons have no mass.
                                     f:  false,                  // Pylons are never forced.
                                     g:  0.0,                    // Ignored.
+                                    o:  0.0,                    // Ignored.
                                     rt: 0.0,                    // Paint resistance.
                                     is_pylon: true,             // A pylon.
                                     stroke: mouse.strokeId      // Stroke Id.
@@ -769,20 +775,28 @@
             // Prepare the color map.
             if (wgl.stroke) {
                 wgl.stroke.visible = true;
-                wgl.material4.uniforms.writealpha.value = 0;
+                wgl.material4.uniforms.pass.value = 0;
                 // Init the buffer with white color and a tiny alpha.
                 // FIXME This whitens every color in the result a little bit.
-                // FIXME This accumulator thing is not very fast and has to use float textures...
+                // FIXME This accumulator thing is not very fast (and needs three passes) and has to use float textures...
                 wgl.renderer.setClearColor (WHITE, 1);
                 wgl.renderer.render (wgl.sceneRTT, wgl.cameraRTT, wgl.rtt_acc, true);
-                wgl.renderer.setClearColor (new THREE.Color (0xff0001), 0);
-                wgl.material4.uniforms.writealpha.value = 1;
+                wgl.renderer.setClearColor (new THREE.Color (0xff0000), 0);
+                wgl.material4.uniforms.pass.value = 1;
                 wgl.renderer.render (wgl.sceneRTT, wgl.cameraRTT, wgl.rtt_acc1, true);
+                wgl.renderer.setClearColor (new THREE.Color (0x000000), 0);
+                wgl.material4.uniforms.pass.value = 2;
+                wgl.renderer.render (wgl.sceneRTT, wgl.cameraRTT, wgl.rtt_acc2, true);
+            }
+            
+            if (wgl.flowmap.composer) {
+                wgl.flowmap.composer.render (0.01);
+                U2.flowmap.texture = wgl.flowmap.composer.readBuffer;
             }
 
             // Re-read the paint parameters.
             if (U2 && !wgl.stroke.needsClear) {
-                U2.renderpar0.value.x = this.paint.opacity.value;
+                //U2.renderpar0.value.x = this.paint.opacity.value;
                 U2.renderpar0.value.w = this.paint.noise.value;
             }
             if (drawCircle && U5 && this.brush && this.brush.pointer_mesh) {
@@ -793,13 +807,7 @@
                     this.commit_timer / this.COMMIT_TIME
                 );
             }
-/*
-            // Prepare the edge map.
-            if (wgl.composer_edge) {
-                wgl.composer_edge.render (0.01);
-                U2.edgemap.texture = wgl.composer_edge.readBuffer;
-            }
-*/
+
             // Render the scene to screen.
             wgl.scene.add (wgl.camera);
             wgl.renderer.setClearColor (BLACK, 255);
@@ -854,8 +862,8 @@
             this.paper.borderclr.w = 0.0;                   // Disable the masked border.
 
             // Prepare the edge map.
-            wgl.composer_edge.render (0.01);
-            u.edgemap.texture = wgl.composer_edge.readBuffer;
+            wgl.darkedges.composer.render (0.01);
+            u.edgemap.texture = wgl.darkedges.composer.readBuffer;
 
             // Render!
             wgl.stroke.visible = false;
@@ -871,7 +879,7 @@
             u.noiseoffset.value.x = Math.random ();
             u.noiseoffset.value.y = Math.random ();
             // Set the stroke's opacity and noise to zero.
-            u.renderpar0.value.x = 0.0;
+            //u.renderpar0.value.x = 0.0;
             u.renderpar0.value.w = 0.0;
             this.paper.borderclr.w = 1.0;
 
@@ -1019,7 +1027,7 @@
             
             // Some uniforms need to be reset.
             wgl.material2.uniforms.lightdir.value = LIGHT;
-            wgl.material2.uniforms.renderpar0.value.x = 0.0;
+            //wgl.material2.uniforms.renderpar0.value.x = 0.0;
             var v = new THREE.Vector3 (mouse.x, mouse.y, 1);
             this.mouseActionRotate    (mouse, v.clone ());
             this.mouseActionTranslate (mouse, v.clone ());
@@ -1330,7 +1338,6 @@
             if (i.valid) {
                 i.state.size    = GRID.PARTICLE_R * this.brush.scale.x;
                 i.state.color   = this.brush.basecolor.getHex ();
-                i.state.opacity = this.paint.opacity.value;
                 i.state.valid   = true;
             }
             
@@ -1350,9 +1357,6 @@
                     if (controls) {
                         controls.sliders.brushsz.range (i.min_size, i.max_size);
                         controls.sliders.brushsz.set   (i.state.size);
-                        if (this.paint.opacity.auto) {
-                            controls.sliders.opacity.set (100 * i.state.opacity);
-                        }
                     }
                     $.farbtastic ('#picker').setColor (clr);
                 }

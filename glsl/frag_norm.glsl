@@ -22,24 +22,16 @@
  * THE SOFTWARE.
  */
 
-attribute vec3 vcolor;          // Vertex color.
-attribute vec4 vtransform;      // Vertex translation and scale.
-attribute vec4 vpigment;        // [density, granulation, flow, opacity].
+uniform sampler2D mapweights0;  // Colormap weights.
+uniform sampler2D mapweights1;  // Colormap weights.
 varying vec2 tx1;
-varying vec3 couleur;
-varying float density;
-varying float granulation;
-varying float opacity;
-varying float wetness;
-varying vec4 fragpos;
 
-void main () {
-    fragpos = modelViewMatrix * vec4 ((1.5 * position * vtransform.w + vtransform.xyz), 1.0);
-    gl_Position = projectionMatrix * fragpos;
-    couleur     = vcolor;
-    density     = vpigment.x;
-    granulation = vpigment.y;
-    wetness     = vpigment.z;
-    opacity     = vpigment.w;
-    tx1 = uv;
+void main() {
+    vec2 tx1i = vec2 (1.0, -1.0) * tx1 + vec2 (0.0, 1.0);
+    vec4 w0 = texture2D (mapweights0, tx1i);
+    vec4 w1 = texture2D (mapweights1, tx1i);
+
+    float wetness = w1.g / w0.r;
+    
+    gl_FragColor = vec4 (wetness, 0.0, 0.0, 1.0);
 }

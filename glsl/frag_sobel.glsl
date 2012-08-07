@@ -24,19 +24,20 @@
 
 uniform sampler2D tex;
 uniform vec2 txstep;
+uniform vec4 pxmask;
 uniform vec3 kernel[3];
 varying vec2 tx1;
 
 void main() {
-    float t0 = texture2D (tex, tx1 + vec2 (-txstep.x, -txstep.y)).r;
-    float t1 = texture2D (tex, tx1 + vec2 (-0.0,      -txstep.y)).r;
-    float t2 = texture2D (tex, tx1 + vec2 (+txstep.x, -txstep.y)).r;
-    float t3 = texture2D (tex, tx1 + vec2 (-txstep.x, -0.0)).r;
-    float t4 = texture2D (tex, tx1 + vec2 (-0.0,      -0.0)).r;
-    float t5 = texture2D (tex, tx1 + vec2 (+txstep.x, -0.0)).r;
-    float t6 = texture2D (tex, tx1 + vec2 (-txstep.x, +txstep.x)).r;
-    float t7 = texture2D (tex, tx1 + vec2 (-0.0,      +txstep.x)).r;
-    float t8 = texture2D (tex, tx1 + vec2 (+txstep.x, +txstep.x)).r;
+    float t0 = dot (texture2D (tex, tx1 + vec2 (-txstep.x, -txstep.y)), pxmask);
+    float t1 = dot (texture2D (tex, tx1 + vec2 (-0.0,      -txstep.y)), pxmask);
+    float t2 = dot (texture2D (tex, tx1 + vec2 (+txstep.x, -txstep.y)), pxmask);
+    float t3 = dot (texture2D (tex, tx1 + vec2 (-txstep.x, -0.0)),      pxmask);
+    float t4 = dot (texture2D (tex, tx1 + vec2 (-0.0,      -0.0)),      pxmask);
+    float t5 = dot (texture2D (tex, tx1 + vec2 (+txstep.x, -0.0)),      pxmask);
+    float t6 = dot (texture2D (tex, tx1 + vec2 (-txstep.x, +txstep.x)), pxmask);
+    float t7 = dot (texture2D (tex, tx1 + vec2 (-0.0,      +txstep.x)), pxmask);
+    float t8 = dot (texture2D (tex, tx1 + vec2 (+txstep.x, +txstep.x)), pxmask);
     float sx = 
         dot (vec3 (t0, t1, t2), kernel[0]) + 
         dot (vec3 (t3, t4, t5), kernel[1]) + 

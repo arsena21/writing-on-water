@@ -64,20 +64,17 @@
             state_brush: {
                 valid:   true,
                 size:    32,
-                color:   0xee0077,
-                opacity: 0.01
+                color:   0xee0077
             },
             state_pencil: {
                 valid:   true,
                 size:    1,
-                color:   0x333333,
-                opacity: 0.5
+                color:   0x333333
             },
             state_eraser: {
                 valid:   true,
                 size:    16,
-                color:   0xffffff,
-                opacity: 0.5
+                color:   0xffffff
             },
         
             // Change the template.
@@ -92,6 +89,7 @@
                     this.resistance  = 0.0;
                     this.size_jitter = 0.0;
                     this.feedback    = 1.0;
+                    this.opacity     = 0.0;
                     this.skip        = 1;
                     this.force_color = undefined;
                     this.drymedia    = false;
@@ -108,7 +106,7 @@
                         },
                         /// Dry-brush effect from water amount.
                         drybrush: function () {
-                            var capacity = b.scale.x;
+                            var capacity = Math.max (0.4, b.scale.x);
                             var amount   = Math.max (0.0, b.water - 1.0 + capacity);
                             return Math.max (0.0, (capacity - amount) / capacity);
                         },
@@ -125,6 +123,7 @@
                     this.resistance  = 1.0;
                     this.size_jitter = 0.0;
                     this.feedback    = 0.0;
+                    this.opacity     = 0.5;
                     this.skip        = 1;
                     this.force_color = undefined;
                     this.drymedia    = true;
@@ -156,6 +155,7 @@
                     this.resistance  = 0.0;
                     this.size_jitter = 0.2;
                     this.feedback    = 0.0;
+                    this.opacity     = 0.0;
                     this.skip        = 2;
                     this.force_color = undefined;
                     this.drymedia    = false;
@@ -187,6 +187,7 @@
                     this.resistance  = 1.0;
                     this.size_jitter = 0.0;
                     this.feedback    = 0.0;
+                    this.opacity     = 0.5;
                     this.skip        = 1;
                     this.force_color = new THREE.Color (0xffffff);
                     this.drymedia    = true;
@@ -223,7 +224,8 @@
                 transparent: true
             });
         
-            b.pointer_tex.magFilter = THREE.NearestMipMapNearestFilter ;
+            b.pointer_tex.generateMipmaps = true;
+            b.pointer_tex.magFilter = THREE.NearestMipMapNearestFilter;
             b.pointer_tex.minFilter = THREE.LinearMipMapLinearFilter;
 
             // Pointer mesh.
@@ -381,6 +383,8 @@
                 /*Math.sqrt*/
                     (ci.hsv.h * ci.hsv.h +
                      ci.hsv.v * ci.hsv.v);
+                     
+            a = 1.0;
 
             if (i) {
                 w.name += "+";
@@ -402,14 +406,16 @@
         };
 
         // Normalize the average.
-        //w.color.r     /= sum;
-        //w.color.g     /= sum;
-        //w.color.b     /= sum;
-        w.granulation /= sum;
-        w.opacity     /= sum;
-        w.diffusion   /= sum;
-        w.blossom     /= sum;
-        w.staining    /= sum;
+        if (sum > 0.001) {
+            //w.color.r     /= sum;
+            //w.color.g     /= sum;
+            //w.color.b     /= sum;
+            w.granulation /= sum;
+            w.opacity     /= sum;
+            w.diffusion   /= sum;
+            w.blossom     /= sum;
+            w.staining    /= sum;
+        }
 
         w.hsv = THREE.ColorUtils.rgbToHsv (w.color);
         w.colorstr = "#" + w.color.getHex ().toString (16);

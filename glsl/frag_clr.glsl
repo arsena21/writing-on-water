@@ -29,14 +29,16 @@ uniform sampler2D background;   // Background image.
 //uniform sampler2D perm;         // Permutation map for noise.
 uniform sampler2D papernorm;    // Normal map of paper texture.
 uniform sampler2D colormap;     // Particles color map.
-uniform sampler2D mapweights;   // Colormap weights.
+uniform sampler2D mapweights0;  // Colormap weights.
+uniform sampler2D mapweights1;  // Colormap weights.
 uniform sampler2D edgemap;      // Edge map.
+uniform sampler2D flowmap;      // Flow map.
 uniform vec2 txadd;
 uniform vec2 txmul;
 uniform vec2 txadd1;
 uniform vec2 txmul1;
 uniform vec2 txstep;
-uniform vec4 renderpar0;        // {opacity, edgepower, bumppower, noise}
+uniform vec4 renderpar0;        // {unused, edgepower, bumppower, noise}
 uniform vec2 noiseoffset;       // Offset in the noise texture (to make it unique for each stroke).
 uniform vec3 lightdir;          // Light source direction.
 uniform vec4 bordersz;          // Masked border size.
@@ -74,11 +76,13 @@ void main () {
   vec4 bg      = texture2D (background, tx2);
   vec3 bmp     = texture2D (papernorm,  tx3).rgb;
   vec4 couleur = texture2D (colormap,   tx1i);    // Sum of weighted particles' colors.
-  vec4 weights = texture2D (mapweights, tx1i);    // Color-field weights.
-  float edge   = texture2D (edgemap,    tx2).r;   // Blurred edge map.
+  vec4 weights0= texture2D (mapweights0,tx1i);    // Color-field weights.
+  vec4 weights1= texture2D (mapweights1,tx1i);    // Color-field weights.
+  float edge   = texture2D (edgemap,    tx2).r;   // Edge map.
+  float flow   = texture2D (flowmap,    tx2).r;   // Flow map.
 
   // FIXME Paint density should increase granulation.
-  float opacity         = renderpar0.r;
+//float opacity         = renderpar0.r;
   float edge_intensity  = renderpar0.g;
   float bump_intensity  = renderpar0.b;
   float noise_intensity = renderpar0.a;
@@ -98,25 +102,22 @@ void main () {
     // BG color with bump map or colored border.
     c = mix (bg.rgb * NdotL, borderclr.rgb, borderclr.a);
   } else {
-    // Paint density and granulation at fragment.
-    float density     = weights.g / weights.r;
-    float granulation = weights.b / weights.r;
-  
-    // FIXME Skip, if empty.
-    //if (density < 0.001)
-    //discard;
+    // Weighted paint properties.
+    float density     = weights0.g / weights0.r;
+    float granulation = weights0.b / weights0.r;
+    float opacity     = weights1.r / weights0.r;
+    float wetness     = weights1.g / weights0.r;
+
+    //float d0 = flow;
   
     // Weighted-average of the particles' colors.
-    couleur.rgb = clamp (couleur.rgb / weights.r, 0.0, 1.0);
+    couleur.rgb = clamp (couleur.rgb / weights0.r, 0.0, 1.0);
 
     // Pixel (color) intensity.
     float clr_y = dot (couleur.rgb, YWH);
     // Paper depth.
     float bmp_y = 1.0 - clamp (dot (bmp, vec3 (0.333, 0.333, 0.333)), 0.0, 1.0);
           bmp_y *= bmp_y;
-
-    // Edge intensity of stroke pixel.
-    //float edge = max (abs (w1 - w0), abs (w3 - w2)).r;
   
     // Craft some granulation noise.
     // FIXME It might be much better.
@@ -147,7 +148,6 @@ void main () {
     // Edges have higher density.
     edge_intensity *= edge;
     float density1 = density + 2.0 * edge_intensity;
-    //density = clamp (density, 0.0, 1.0);
 
     // Add some noise.
     couleur.rgb = clamp (couleur.rgb + ns * noise_intensity, 0.0, 1.0);
@@ -176,7 +176,7 @@ void main () {
     c *= NdotL;
     
     //c = texture2D (edgemap, tx2).rgb;
-    //c = vec3 (ns, ns, ns);
+    //c = vec3 (d0, d0, d0);
     //c = S;
   }
 

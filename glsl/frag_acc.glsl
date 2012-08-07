@@ -22,11 +22,15 @@
  * THE SOFTWARE.
  */
 
+//precision highp float;
+
 uniform sampler2D alphamap;
-uniform int writealpha;
+uniform int pass;
 varying vec3 couleur;
 varying float density;
 varying float granulation;
+varying float wetness;
+varying float opacity;
 varying vec2 tx1;
 
 /**
@@ -35,17 +39,44 @@ varying vec2 tx1;
  * FIXME Multiple render targets might be used here if available.
  */
 void main () {
-    float a = texture2D (alphamap, tx1).a;
+  float a = texture2D (alphamap, tx1).a;
+  if (a < 0.001)
+    discard;
 
-    if (writealpha == 0) {
-      // Weighted sum of particle colors.
-      gl_FragData[0] = vec4 (a * couleur, 1.0);
-    } else {
-      gl_FragData[0] = vec4 (
-                             a,                 // Sum of weights.
-                             a * density,       // Weighted sum of particle densities.
-                             a * granulation,   // Weighted sum of particle granulations.
-                             1.0
-                             );
-    }
+  if (pass == 0) {
+    // Weighted sum of particle colors.
+    gl_FragColor = vec4 (a * couleur, 1.0);
+  }
+  if (pass == 1) {
+    // Weight the values.
+    vec4 w = a * vec4 (
+                       density,      // Weighted sum of particle densities.
+                       granulation,  // Weighted sum of particle granulations.
+                       0.0,
+                       0.0
+                       );
+    
+    // Pack the density and granulation.
+    //float pck0 = floor (w.r * 256.0) * 4096.0 + floor (w.g * 256.0);
+    
+    gl_FragColor = vec4 (
+                         a,           // Sum of weights.
+                         //pck0,        // Packed data.
+                         //0.0,
+                         w.r,
+                         w.g,
+                         1.0
+                         );
+  }
+  if (pass == 2) {
+     // Weight the values.
+    vec4 w = a * vec4 (
+                       opacity,      // Weighted sum of particle opacities.
+                       wetness,      // Weighted sum of particle wetnesses.
+                       0.0,
+                       0.0
+                       );
+
+    gl_FragColor = vec4 (w.rgb, 1.0);
+  }
 }

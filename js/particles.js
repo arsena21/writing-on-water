@@ -79,7 +79,6 @@
         this.allocatePool = function () {
             pool = [];
             for (var i = 0; i < this.MAX_PARTICLES; i++) {
-                // FIXME Per-particle opacity.
                 pool.push ({
                     position:   new THREE.Vector3 (),
                     last_position: new THREE.Vector3 (),
@@ -328,7 +327,7 @@
             part.position      = point;
             part.last_position = point.clone ();
             // pigment = (mass, granulation, flow, unused)
-            part.pigment.set (mass, props.g, flow, 0.0);                      // Pigment description (shader attribute).
+            part.pigment.set (mass, props.g, flow, props.o);                  // Pigment description (shader attribute).
             part.transform.set (                                              // Particle position and radius (shader attribute).
                     point.x,
                     point.y,

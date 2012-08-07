@@ -24,10 +24,7 @@
 
 (function ($) {
     window.MyWglStuff = function (canvas) {
-        /** @const */
-        var RTTscale  = 4;
-        var EdgeScale = 2;
-
+    
         /**
          * Create a paintable material that will be our
          * destination for rendering the stuff.
@@ -98,8 +95,9 @@
                 // Accumulator textures are downscaled to reduce the rendering time.
                 // FIXME UnsignedShortType ?
                 // FIXME Maybe I cound use moving average here, using the byte precision instead of float...
-                rtt_acc:  this.renderTarget (PLANE_W / RTTscale, PLANE_H / RTTscale, THREE.FloatType, THREE.RGBAFormat),
-                rtt_acc1: this.renderTarget (PLANE_W / RTTscale, PLANE_H / RTTscale, THREE.FloatType, THREE.RGBAFormat), // LuminanceFormat
+                rtt_acc:  this.renderTarget (PLANE_W / 4, PLANE_H / 4, THREE.FloatType, THREE.RGBAFormat),
+                rtt_acc1: this.renderTarget (PLANE_W / 8, PLANE_H / 8, THREE.FloatType, THREE.RGBAFormat),
+                rtt_acc2: this.renderTarget (PLANE_W / 8, PLANE_H / 8, THREE.FloatType, THREE.RGBAFormat),
 
               //material1:   null,
                 material2:   null,    // Stroke mesh material.
@@ -124,10 +122,17 @@
                     })
                 ),
 
-                edgepass:   null,
-                blurpass_x: null,
-                blurpass_y: null,
-                composer_edge: null,
+                darkedges: {
+                    edgepass:      null,
+                    blurpass_x:    null,
+                    blurpass_y:    null,
+                    composer:      null
+                },
+                flowmap: {
+                    normpass:      null,
+                    edgepass:      null,
+                    composer:      null
+                },
 
                 particles: new THREE.Geometry ()
             };
@@ -151,6 +156,11 @@
             wgl.rtt_acc1.stencilBuffer = false;
             wgl.rtt_acc1.magFilter = THREE.LinearFilter;
             wgl.rtt_acc1.minFilter = THREE.NearestFilter;
+            wgl.rtt_acc2.generateMipmaps = false;
+            wgl.rtt_acc2.depthBuffer = false;
+            wgl.rtt_acc2.stencilBuffer = false;
+            wgl.rtt_acc2.magFilter = THREE.LinearFilter;
+            wgl.rtt_acc2.minFilter = THREE.NearestFilter;
             wgl.rtt_stroke.generateMipmaps = false;
             wgl.rtt_stroke.depthBuffer = false;
             wgl.rtt_stroke.stencilBuffer = false;
@@ -267,6 +277,7 @@
                 cfg.shaders['frag_clr'] &&
                 cfg.shaders['frag_acc'] &&
                 cfg.shaders['frag_eff'] &&
+                cfg.shaders['frag_norm'] &&
                 cfg.shaders['frag_sobel'] &&
                 cfg.paper_tex &&
                 cfg.particle_tex &&
@@ -281,6 +292,7 @@
                 var frag2 = cfg.shaders['frag_eff'];
                 var vert3 = cfg.shaders['vert_1'];
                 var frag3 = cfg.shaders['frag_sobel'];
+                var frag4 = cfg.shaders['frag_norm'];
 
                 var rtt  = wgl.rtt_canvas;        
                 var rtt1 = wgl.rtt_stroke;
@@ -306,8 +318,10 @@
                         //perm:        {type: "t",  value: 2, texture: perm},                 // Noise permutaion map.
                         papernorm:   {type: "t",  value: 3, texture: norm},                 // Paper normal map.
                         colormap:    {type: "t",  value: 4, texture: wgl.rtt_acc},          // Color map.
-                        mapweights:  {type: "t",  value: 5, texture: wgl.rtt_acc1},         // Color map weights.
-                        edgemap:     {type: "t",  value: 6, texture: null},                 // Edge map.
+                        mapweights0: {type: "t",  value: 5, texture: wgl.rtt_acc1},         // Color map weights.
+                        mapweights1: {type: "t",  value: 6, texture: wgl.rtt_acc2},         // Color map weights.
+                        edgemap:     {type: "t",  value: 7, texture: null},                 // Edge map.
+                        flowmap:     {type: "t",  value: 8, texture: null},                 // Flow map.
                         txadd:       {type: "v2", value: new THREE.Vector2()},              // Texcoords transform 0.
                         txmul:       {type: "v2", value: txmul},                            // Texcoords transform 0.
                         txadd1:      {type: "v2", value: new THREE.Vector2(0.0, 0.0)},      // Texcoords transform 1.
@@ -317,16 +331,16 @@
                         lightdir:    {type: "v3", value: new THREE.Vector3 (0, 1, 0)},      // Light direction.
                         /**
                          * renderpar0 = {
-                         *      opacity,     // Pigment opacity.
+                         *      unused,      // 
                          *      edgepower,   // Edge darkening intensity.
                          *      bumppower,   // Bump map intensity.
                          *      noise        // Noise intensity.
                          * };
                          */
-                        renderpar0:  {type: "v4", value: new THREE.Vector4 (0.1, 0.0, 1.0, 0.0)},
+                        renderpar0:  {type: "v4", value: new THREE.Vector4 (0.0, 0.0, 1.0, 0.0)},
                         ftransform:  {type: "m4", value: new THREE.Matrix4 ().identity ()},
-                        bordersz:    {type: "v4", value: canvas.paper.border},
-                        borderclr:   {type: "v4", value: canvas.paper.borderclr}
+                        bordersz:    {type: "v4", value: canvas.paper.border},              // Masked border size.
+                        borderclr:   {type: "v4", value: canvas.paper.borderclr}            // Masked border color.
                     },
                     vertexShader:   vert0,
                     fragmentShader: frag0,
@@ -357,8 +371,8 @@
                 // Accumulator shader material.
                 wgl.material4 = new THREE.ShaderMaterial( {
                     uniforms: {
-                        alphamap:    {type: "t",  value: 0, texture: amap}, 
-                        writealpha:  {type: "i",  value: 0}
+                        alphamap: {type: "t",  value: 0, texture: amap}, 
+                        pass:     {type: "i",  value: 0}
                     },
                     attributes: wgl.attributes,
                     vertexShader: vert1,
@@ -413,11 +427,12 @@
                 wgl.scene.add (wgl.plane1);
                 
                 // Edge-detection shader pass.
-                wgl.edgepass = new THREE.ShaderPass ({
+                wgl.darkedges.edgepass = new THREE.ShaderPass ({
                     fragmentShader: frag3,
                     vertexShader:   vert3,
                     uniforms:       {
                         tex:    {type: "t",  value: 0, texture: wgl.rtt_stroke},
+                        pxmask: {type: "v4", value: new THREE.Vector4 (1.0, 0.0, 0.0, 0.0)},
                         kernel: {type: "fv", value: [-1.0, 0.0, +1.0, -2.0, 0.0, +2.0, -1.0, 0.0, +1.0]},
                         txstep: {type: "v2", value: new THREE.Vector2 (1.0 / canvas.paper.width, 1.0 / canvas.paper.height)},
                     }
@@ -426,12 +441,40 @@
                 //wgl.blurpass_x = new THREE.ShaderPass (THREE.ShaderExtras["horizontalBlur"], "tDiffuse");
                 //wgl.blurpass_y = new THREE.ShaderPass (THREE.ShaderExtras["verticalBlur"],   "tDiffuse");
                 
-                wgl.composer_edge = new THREE.EffectComposer (wgl.renderer,
-                    this.renderTarget (canvas.paper.width / EdgeScale, canvas.paper.height / EdgeScale,
+                wgl.darkedges.composer = new THREE.EffectComposer (wgl.renderer,
+                    this.renderTarget (canvas.paper.width / 2, canvas.paper.height / 2,
                                        THREE.UnsignedByteType, THREE.RGBFormat));
-                wgl.composer_edge.addPass (wgl.edgepass);
+                wgl.darkedges.composer.addPass (wgl.darkedges.edgepass);
                 //wgl.composer_edge.addPass (wgl.blurpass_x);
                 //wgl.composer_edge.addPass (wgl.blurpass_y);
+                
+                // Flow-map generation:
+                // Value normalizer.
+                wgl.flowmap.normpass = new THREE.ShaderPass ({
+                    fragmentShader: frag4,
+                    vertexShader:   vert3,
+                    uniforms:       {
+                        mapweights0: {type: "t",  value: 5, texture: wgl.rtt_acc1},         // Color map weights.
+                        mapweights1: {type: "t",  value: 6, texture: wgl.rtt_acc2},         // Color map weights.
+                    }
+                });
+                // Edge filter.
+                wgl.flowmap.edgepass = new THREE.ShaderPass ({
+                    fragmentShader: frag3,
+                    vertexShader:   vert3,
+                    uniforms:       {
+                        tex:    {type: "t",  value: 0, texture: null},
+                        pxmask: {type: "v4", value: new THREE.Vector4 (1.0, 0.0, 0.0, 0.0)},
+                        kernel: {type: "fv", value: [-1.0, 0.0, +1.0, -2.0, 0.0, +2.0, -1.0, 0.0, +1.0]},
+                        txstep: {type: "v2", value: new THREE.Vector2 (8.0 / canvas.paper.width, 8.0 / canvas.paper.height)},
+                    }
+                }, "tex");
+                // Composer.
+                wgl.flowmap.composer = new THREE.EffectComposer (wgl.renderer,
+                    this.renderTarget (canvas.paper.width / 4, canvas.paper.height / 4,
+                                       THREE.UnsignedByteType, THREE.RGBFormat));
+                wgl.flowmap.composer.addPass (wgl.flowmap.normpass);
+                wgl.flowmap.composer.addPass (wgl.flowmap.edgepass);
 
                 // Tell the caller that we created something.
                 return true;
