@@ -337,7 +337,7 @@
                          *      noise        // Noise intensity.
                          * };
                          */
-                        renderpar0:  {type: "v4", value: new THREE.Vector4 (0.0, 0.0, 1.0, 0.0)},
+                        renderpar0:  {type: "v4", value: new THREE.Vector4 (0.0, 0.0, canvas.paper.texture.value, 0.0)},
                         ftransform:  {type: "m4", value: new THREE.Matrix4 ().identity ()},
                         bordersz:    {type: "v4", value: canvas.paper.border},              // Masked border size.
                         borderclr:   {type: "v4", value: canvas.paper.borderclr}            // Masked border color.

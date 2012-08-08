@@ -87,11 +87,11 @@ void main () {
   float bump_intensity  = renderpar0.b;
   float noise_intensity = renderpar0.a;
 
-  // Expand the bump-map into a normalized signed vector.
-  bmp = 2.0 * bmp - 1.0;
+  // Expand the bump-map into a normalized signed
+  // vector and apply the texture intencity.
+  bmp = mix (vec3 (0.0, 0.0, 1.0), 2.0 * bmp - 1.0, bump_intensity);
   // Find the dot product between the light direction and the normal.
   float NdotL = max (dot (bmp, lightdir), 0.0);
-        NdotL = mix (1.0, NdotL, 0.1 * bump_intensity);
 
   // Resulting color.
   vec3 c;

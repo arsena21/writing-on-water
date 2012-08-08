@@ -30,7 +30,7 @@
 
     // Environment.
     var GRAVITY = new THREE.Vector3 (0.0, 0.0, 0.0);
-    var LIGHT   = new THREE.Vector3 (1.0, 1.0, 5.0);
+    var LIGHT   = new THREE.Vector3 (1.0, 1.0, 10.0);
 
     // Particle system.
     var GRID = new window.ParticleGrid ();
@@ -129,11 +129,11 @@
              * Paper description.
              */
             this.paper = {
-                width:  800,
+                width:  800,                                // FIXME Must be set by user.
                 height: 600,
 
                 color:    WHITE.clone(),                    // Paper color.
-                texture:  0.1,                              // Texture amplitude. FIXME Not implemented.
+                texture:  new Parameter (0.1, true),        // Paper texture amplitude.
                 // Masked border size and color.
                 border:    new THREE.Vector4 (0.02, 0.02, 0.02, 0.02),
                 borderclr: new THREE.Vector4 (0.75, 0.8, 0.1, 1.0)
@@ -637,6 +637,8 @@
                 scale.x = Math.min (2.00, scale.x);
                 scale.y = scale.x;
                 scale.z = scale.x;
+                
+                drybrush = Math.min (drybrush + 0.5 * this.paper.texture.value, 0.6);
 
                 // Add a stroke blob.
                 var blob = new THREE.Mesh (wgl.blob_geom, wgl.material3);
@@ -795,9 +797,10 @@
             }
 
             // Re-read the paint parameters.
-            if (U2 && !wgl.stroke.needsClear) {
+            if (U2) {// && !wgl.stroke.needsClear) {
                 //U2.renderpar0.value.x = this.paint.opacity.value;
                 U2.renderpar0.value.w = this.paint.noise.value;
+                U2.renderpar0.value.z = this.paper.texture.value;
             }
             if (drawCircle && U5 && this.brush && this.brush.pointer_mesh) {
                 U5.circle.value.set (
@@ -875,7 +878,7 @@
             u.txadd1.value.set (0.0, 0.0);
             u.ftransform.value = t;
             u.renderpar0.value.y = 0.0;
-            u.renderpar0.value.z = 1.0;
+            u.renderpar0.value.z = this.paper.texture.value;
             u.noiseoffset.value.x = Math.random ();
             u.noiseoffset.value.y = Math.random ();
             // Set the stroke's opacity and noise to zero.
@@ -991,10 +994,10 @@
             }
             
             // Rotate the light vector.
-            l1 = m.multiplyVector3 (l1);
-            LIGHT.x = l1.x;
-            LIGHT.y = l1.z;
-            LIGHT.z = l1.y;
+            //l1 = m.multiplyVector3 (l1);
+            //LIGHT.x = l1.x;
+            //LIGHT.y = l1.z;
+            //LIGHT.z = l1.y;
             LIGHT.normalize ();
 
             this.wgl.material2.uniforms.lightdir.value = LIGHT;

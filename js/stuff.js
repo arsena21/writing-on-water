@@ -285,6 +285,16 @@
                         return value;
                     }
                 }),
+                texture: new AdvancedSlider ({
+                    name:    "texture",
+                    title:   "Texture",
+                    measure: "%",
+                    value:   10,
+                    min: 0,
+                    max: 100,
+                    hide_auto_button: true,
+                    target: canvas.paper.texture
+                }),
                 maxparticles: new AdvancedSlider ({
                     name:    "maxparticles",
                     title:   "Max particles",
@@ -345,6 +355,7 @@
             $("#controls_paint").append (this.sliders.granulation.el);
             $("#controls_paint").append (this.sliders.noise.el);
             $("#controls_document").append (this.sliders.bordersz.el);
+            $("#controls_document").append (this.sliders.texture.el);
             $("#controls_debug").append (this.sliders.maxparticles.el);
             $("#snapcolor").click (function () {
                 if (canvas) {
