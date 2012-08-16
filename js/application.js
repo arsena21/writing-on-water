@@ -194,7 +194,16 @@
             // Declare some useful functions here.
             var wgl   = this.wgl;
             var mouse = this.mouse;
-            
+            //var canvas = this;
+
+            // Particles processor.
+            /* FIXME Someday.
+            this.worker = new Worker ("js/particles_worker.js");
+            this.worker.onmessage = function (e) {
+            };
+            this.worker.postMessage ({command: "startloop"});
+            */
+
             /// This function is called for each updated particle
             /// and used to keep in sync the webgl attributes.
             this.particleChanged = function (idx, t, c, pig) {
@@ -679,16 +688,16 @@
                             this.particleChanged
                         );
                         if (p) {
-                            if (this.debug) {
-                                this.debug.addParticle (p);
+                            if (canvas.debug) {
+                                canvas.debug.addParticle (p);
                             }
 
                             wgl.material3.uniforms.jagged.value.x = 0.5 * (0.8 + drybrush);
                             wgl.material3.uniforms.jagged.value.y = 0.9 * drybrush;
 
                             // Update the water amount in brush if wet.
-                            if (!this.brush.template.drymedia) {
-                                brush.waterUpdate (-0.01);
+                            if (!canvas.brush.template.drymedia) {
+                                canvas.brush.waterUpdate (-0.01);
                             }
                         }
                     }
@@ -1298,7 +1307,6 @@
         
         /**
          * Update some stuff if the canvas has beed resized.
-         * FIXME This resizing thing is still BAD.
          */
         resized: function () {
             var o = this.el;
@@ -1317,9 +1325,8 @@
 
             // Try to keep the scale intact,
             // disregarding the viewport resize.
-            var wgl = this.wgl;
-            wgl.zoom  = Math.max (viewW / this.paper.width, viewH / this.paper.height);
-            wgl.zoom  = Math.min (wgl.zoom, 1.0);
+            var wgl  = this.wgl;
+            wgl.zoom = viewH / this.paper.height;
             wgl.camera.fov = 80.0 * wgl.zoom;
             wgl.camera.aspect = viewW / viewH;
             wgl.camera.updateProjectionMatrix ();

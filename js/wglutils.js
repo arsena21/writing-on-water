@@ -35,7 +35,8 @@
                     minFilter: THREE.LinearFilter,
                     magFilter: THREE.LinearFilter,
                     format: format,
-                    type: type
+                    type: type,
+                    anisotropy: 0
                 }
             );
         };
