@@ -24,14 +24,18 @@
 
 uniform sampler2D mapweights0;  // Colormap weights.
 uniform sampler2D mapweights1;  // Colormap weights.
+//uniform sampler2D mask;         // Stroke mask.
 varying vec2 tx1;
 
 void main() {
     vec2 tx1i = vec2 (1.0, -1.0) * tx1 + vec2 (0.0, 1.0);
     vec4 w0 = texture2D (mapweights0, tx1i);
     vec4 w1 = texture2D (mapweights1, tx1i);
+    //float m = texture2D (mask, tx1).r;
 
-    float wetness = w1.g / w0.r;
+    // Normalize the weighted sum of timestamps
+    // and apply a mask.
+    float time = w1.g / w0.r;
     
-    gl_FragColor = vec4 (wetness, 0.0, 0.0, 1.0);
+    gl_FragColor = vec4 (time, 0.0, 0.0, 1.0);
 }

@@ -323,6 +323,27 @@
             this.waterReset ();
         };
     };
+    
+    /**
+     * Brush pointer generator.
+     * @constructor
+     */
+    function BrushPhysics () {
+        this.resolution = 16;
+        this.mesh = [];
+        
+        // Bristle blobs.
+        for (var i = 0; i < this.resolution; i++) {
+            this.mesh.push ({
+                position: new THREE.Vector3 (
+                    0.5 - Math.random (),
+                    0.5 - Math.random (),
+                    0.0
+                ),
+                size: 1.0 / this.resolution
+            });
+        }
+    };
 
     /**
      * Color helper functions.
@@ -330,6 +351,29 @@
      */
     function Pigment () {};
 
+    /// Returns the closest palette item to a given color.
+    /// Assumes that pigment is defined by Hue and Value only
+    /// and ignores Saturation.
+    Pigment.closest = function (c, palette) {
+        var d = 10000.0;
+        var p = null;
+
+        for (var j = 0; j < palette.length; j++) {
+            var ci = palette[j];
+            var v1 = new THREE.Vector3 (ci.hsv.h, 1.0, ci.hsv.v);
+            var d1 = v0.distanceTo (v1);
+
+            // Choose the closest.
+            if (d > d1) {
+                d = d1;
+                p = ci;
+            }
+        }
+
+        if (!p)
+            return undefined;
+    };
+    
     /// Decompose a given color into the list of palette items.
     /// Assumes that pigment is defined by Hue and Value only
     /// and ignores Saturation.
@@ -352,57 +396,70 @@
             reserved:    0
         };
 
-        // 1. Calculate the distance for each color.
-        var pigs = palette.slice ();
-        for (var i = 0, len = pigs.length; i < len; i++) {
-            var ci = pigs[i];
-            if (!ci) 
-                continue;
-
-            var dh = c0.h - ci.hsv.h;
-          //var ds = c0.s - c1.s; Saturation is ignored.
-            var dv = c0.v - ci.hsv.v;
-
-            pigs[i].reserved = Math.sqrt (dh * dh + dv * dv);
-        }
-
-        // 2. Sort the colors.
-        pigs.sort (function (a, b) {
-            return a.reserved - b.reserved;
-        });
-
         var sum = 0.0;
+        var a = 1.0;
+        var pigs = [];
         depth = 1;
 
-        // 3. Compute the weights for K first colors.
+        // Decompose.
         for (var i = 0; i < depth; i++) {
-            var ci = pigs[i];
-            var a  = (ci.hsv.h * c0.h + 
-                    //ci.hsv.s * c0.s + 
-                      ci.hsv.v * c0.v) /
-                /*Math.sqrt*/
-                    (ci.hsv.h * ci.hsv.h +
-                     ci.hsv.v * ci.hsv.v);
-                     
-            a = 1.0;
+            var v0 = new THREE.Vector3 (c0.h, 1.0, c0.v);
+            var d = 10000.0;
+            var p = null;
+
+            for (var j = 0; j < palette.length; j++) {
+                var ci = palette[j];
+                var v1 = new THREE.Vector3 (ci.hsv.h, 1.0, ci.hsv.v);
+
+                //var dot = v0.clone().normalize().dot (v1.clone().normalize()); // Dot product.
+                var d1 = v0.distanceTo (v1);
+
+                // Choose the closest.
+                if (d > d1) {
+                    d = d1;
+                    p = ci;
+                }
+            }
+
+            if (!p)
+                break;
 
             if (i) {
                 w.name += "+";
                 w.code += "+";
             }
 
+            //var v1 = new THREE.Vector3 (p.hsv.h, p.hsv.s, p.hsv.v);
+            //a = v0.length () / v1.length ();
+
             // Update the average.
             sum           += a;
-            w.name        += ci.name;
-            w.code        += ci.code;
-            w.color.r     += a * ci.color.r;
-            w.color.g     += a * ci.color.g;
-            w.color.b     += a * ci.color.b;
-            w.granulation += a * ci.granulation
-            w.opacity     += a * ci.opacity;
-            w.diffusion   += a * ci.diffusion;
-            w.blossom     += a * ci.blossom;
-            w.staining    += a * ci.staining;
+            w.name        += p.name;
+            w.code        += p.code;
+            w.color.r     += a * p.color.r;
+            w.color.g     += a * p.color.g;
+            w.color.b     += a * p.color.b;
+            w.granulation += a * p.granulation
+            w.opacity     += a * p.opacity;
+            w.diffusion   += a * p.diffusion;
+            w.blossom     += a * p.blossom;
+            w.staining    += a * p.staining;
+            
+            pigs.push (p);
+            
+            // Subtract the color.
+            //v0.subSelf (v1);
+            
+            //v0.x = Math.max (0.0, v0.x);
+            //v0.y = Math.max (0.0, v0.y);
+            //v0.z = Math.max (0.0, v0.z);
+            
+            //a = v.length ();
+            //v.multiplyScalar (1.0 / a);
+
+            c0.h = v0.x;
+            c0.s = v0.y;
+            c0.v = v0.z;
         };
 
         // Normalize the average.
@@ -417,6 +474,9 @@
             w.staining    /= sum;
         }
 
+        //w.color.r = Math.max (0.0, v.x);
+        //w.color.g = Math.max (0.0, v.y);
+        //w.color.b = Math.max (0.0, v.z);
         w.hsv = THREE.ColorUtils.rgbToHsv (w.color);
         w.colorstr = "#" + w.color.getHex ().toString (16);
 

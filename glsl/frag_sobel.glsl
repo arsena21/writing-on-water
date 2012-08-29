@@ -23,31 +23,62 @@
  */
 
 uniform sampler2D tex;
+uniform sampler2D mask;
 uniform vec2 txstep;
 uniform vec4 pxmask;
 uniform vec3 kernel[3];
+uniform int inside;
 varying vec2 tx1;
 
-void main() {
-    float t0 = dot (texture2D (tex, tx1 + vec2 (-txstep.x, -txstep.y)), pxmask);
-    float t1 = dot (texture2D (tex, tx1 + vec2 (-0.0,      -txstep.y)), pxmask);
-    float t2 = dot (texture2D (tex, tx1 + vec2 (+txstep.x, -txstep.y)), pxmask);
-    float t3 = dot (texture2D (tex, tx1 + vec2 (-txstep.x, -0.0)),      pxmask);
-    float t4 = dot (texture2D (tex, tx1 + vec2 (-0.0,      -0.0)),      pxmask);
-    float t5 = dot (texture2D (tex, tx1 + vec2 (+txstep.x, -0.0)),      pxmask);
-    float t6 = dot (texture2D (tex, tx1 + vec2 (-txstep.x, +txstep.x)), pxmask);
-    float t7 = dot (texture2D (tex, tx1 + vec2 (-0.0,      +txstep.x)), pxmask);
-    float t8 = dot (texture2D (tex, tx1 + vec2 (+txstep.x, +txstep.x)), pxmask);
-    float sx = 
-        dot (vec3 (t0, t1, t2), kernel[0]) + 
-        dot (vec3 (t3, t4, t5), kernel[1]) + 
-        dot (vec3 (t6, t7, t8), kernel[2]);
-        
-    float sy = 
-        dot (vec3 (t0, t3, t6), kernel[0]) + 
-        dot (vec3 (t1, t4, t7), kernel[1]) + 
-        dot (vec3 (t2, t5, t8), kernel[2]);
+const vec4 T = vec4 (0.01, 0.01, 0.01, 0.01);
 
-    float a = length (vec2 (sx, sy));
-    gl_FragColor = vec4 (a, a, a, 1.0);
+void main() {
+    // Stroke mask.
+    vec4 m = vec4 (
+        texture2D (mask, tx1 + vec2 (-txstep.x, 0.0)).r,
+        texture2D (mask, tx1 + vec2 (+txstep.x, 0.0)).r,
+        texture2D (mask, tx1 + vec2 (0.0, -txstep.y)).r,
+        texture2D (mask, tx1 + vec2 (0.0, +txstep.y)).r
+    );
+    
+    // Texels.
+    vec3 t012 = vec3 (
+        dot (texture2D (tex, tx1 + vec2 (-txstep.x, -txstep.y)), pxmask),
+        dot (texture2D (tex, tx1 + vec2 (-0.0,      -txstep.y)), pxmask),
+        dot (texture2D (tex, tx1 + vec2 (+txstep.x, -txstep.y)), pxmask)
+    );
+    vec3 t345 = vec3 (
+        dot (texture2D (tex, tx1 + vec2 (-txstep.x, -0.0)),      pxmask),
+        dot (texture2D (tex, tx1 + vec2 (-0.0,      -0.0)),      pxmask),
+        dot (texture2D (tex, tx1 + vec2 (+txstep.x, -0.0)),      pxmask)
+    );
+    vec3 t678 = vec3 (
+        dot (texture2D (tex, tx1 + vec2 (-txstep.x, +txstep.x)), pxmask),
+        dot (texture2D (tex, tx1 + vec2 (-0.0,      +txstep.x)), pxmask),
+        dot (texture2D (tex, tx1 + vec2 (+txstep.x, +txstep.x)), pxmask)
+    );
+
+    // Filter and clamp.
+    vec2 s = clamp (vec2 (
+        dot (t012, kernel[0]) + 
+        dot (t345, kernel[1]) + 
+        dot (t678, kernel[2]),
+        dot (vec3 (t012.x, t345.x, t678.x), kernel[0]) + 
+        dot (vec3 (t012.y, t345.y, t678.y), kernel[1]) + 
+        dot (vec3 (t012.z, t345.z, t678.z), kernel[2])
+    ), -1.0, 1.0);
+    
+    /*
+    if (inside != 0 && any (lessThan (m, T))) {
+        s = vec2 (0.0, 0.0);
+    }
+    */
+
+    // Edge intensity.
+    float a = length (s);
+    
+    // Edge direction transformed into [0, 1].
+    s = s * 0.5 + 0.5;
+    
+    gl_FragColor = vec4 (a, s.x, s.y, 1.0);
 }

@@ -95,11 +95,12 @@
                     id:         0,                                              // Unique particle Id.
                     pressure:   0.0,                                            // Current pressure.
                     massdensity:0.0,                                            // Particle's mass divided by density.
+                    flow:       0.0,                                            // Ability to flow.
                     last_hash:  undefined,
                     pylon_d:    0.0,
                     majornorm:  new THREE.Vector2 (),
                     n_time:     undefined,
-                    neighbours: []                                             // Neighbours list.
+                    neighbours: []                                              // Neighbours list.
                 });
             }
         };
@@ -267,7 +268,7 @@
                 },
                 mass      = props.m,
                 brush_clr = props.c,
-                flow      = 1.0 - props.rt;
+                timestamp = props.stamp;
 
             // Set the particle radius.
             var r = PARTICLE_R * props.r;
@@ -305,6 +306,7 @@
                         // fUpdated (ni.id * 4, INF, nic);
                     }
 
+                    ni.pigment.z = timestamp;
                     if (fUpdated) {
                         fUpdated (ni.id * 4, ni.transform, nic, ni.pigment);
                     }
@@ -317,7 +319,7 @@
             }
 
             // Initial particle radius.
-            var r0 = found && flow > 0.001 ? 8.0 : r;
+            var r0 = found && timestamp > 0.001 ? 8.0 : r;
 
             if (pool.length <= list.length)
                 return null;
@@ -327,7 +329,7 @@
             part.position      = point;
             part.last_position = point.clone ();
             // pigment = (mass, granulation, flow, unused)
-            part.pigment.set (mass, props.g, flow, props.o);                  // Pigment description (shader attribute).
+            part.pigment.set (mass, props.g, timestamp, props.o);             // Pigment description (shader attribute).
             part.transform.set (                                              // Particle position and radius (shader attribute).
                     point.x,
                     point.y,
@@ -367,7 +369,7 @@
          * DOC: Matthias Muller, David Charypar, Markus Gross.
          *      Particle-Based Fluid Simulation for Interactive Applications. 2003
          */
-        this.movePaintParticles = function (paint, dt, status) {
+        this.movePaintParticles = function (paint, timestamp, dt, status) {
             status.pos_changed = 0;
             status.clr_changed = 0;
 
@@ -422,6 +424,9 @@
                 } else {
                     p.pylon_d = Number.POSITIVE_INFINITY;
                     p.F.set (0, 0);
+                    
+                    // Ability to flow.
+                    p.flow = Math.max (0.0, 1.0 - timestamp + p.pigment.z);
 
                     // Enum the particle's neighbours.
                     me.neighbourhood (p);
@@ -530,7 +535,7 @@
 
                         if (d < 0.2) {
                             // Color diffusion.
-                            p.color.lerpSelf (nj.color, 0.01 * dt * p.pigment.z);
+                            p.color.lerpSelf (nj.color, 0.01 * dt * p.flow);
                             status.clr_changed++;
                         }
 
@@ -590,8 +595,7 @@
                 var acceleration = tmp2;
 
                 // Update the velocity.
-                p.v.addSelf (acceleration.multiplyScalar (dt)).multiplyScalar (vatt * p.pigment.z);
-                p.pigment.z *= 0.999;
+                p.v.addSelf (acceleration.multiplyScalar (dt)).multiplyScalar (vatt * p.flow);
 
                 p.v.multiplyScalar (dt);
                 var d = Math.abs (p.v.x) + Math.abs (p.v.y);

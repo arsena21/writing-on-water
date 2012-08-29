@@ -79,7 +79,7 @@ void main () {
   vec4 weights0= texture2D (mapweights0,tx1i);    // Color-field weights.
   vec4 weights1= texture2D (mapweights1,tx1i);    // Color-field weights.
   float edge   = texture2D (edgemap,    tx2).r;   // Edge map.
-  float flow   = texture2D (flowmap,    tx2).r;   // Flow map.
+  vec4 bloom   = texture2D (flowmap,    tx2);     // Flow map.
 
   // FIXME Paint density should increase granulation.
 //float opacity         = renderpar0.r;
@@ -107,8 +107,11 @@ void main () {
     float granulation = weights0.b / weights0.r;
     float opacity     = weights1.r / weights0.r;
     float wetness     = weights1.g / weights0.r;
+    if (bloom.r < 0.2) {
+        bloom.rgb = vec3 (0.0, 0.0, 0.0);
+    }
 
-    //float d0 = flow;
+    //float d0 = bloom.r;
   
     // Weighted-average of the particles' colors.
     couleur.rgb = clamp (couleur.rgb / weights0.r, 0.0, 1.0);
@@ -144,6 +147,14 @@ void main () {
     // is more visible on dark colors.
     granulation *= mix (bmp_y, 1.0, max (0.0, 0.5 + gop - clr_y));
     granulation *= ns;
+    
+    // Generate a bloom texture.
+    bloom.yz = (bloom.yz - 0.5) * 2.0;
+    vec2 bloom_tx = vec2 (
+        (atan (bloom.z, bloom.y) + 1.5708) * 0.3183,
+        length (tx4)
+    );
+    bloom.r *= snoise2 (bloom_tx * vec2 (128.0, 32.0));
   
     // Edges have higher density.
     edge_intensity *= edge;
@@ -169,7 +180,7 @@ void main () {
     // Apply the opacity.
     c = mix (S * bg.rgb, K, opacity);
     // Darken the edges.
-    c *= 1.0 - edge_intensity * (1.0 - clr_y) * density * density;
+    c *= 1.0 - (edge_intensity/* + bloom.r*/) * (1.0 - clr_y) * density * density;
     // Fade to BG if outside the mask.
     c = mix (bg.rgb, c, w.r);
     // Apply the bump map.

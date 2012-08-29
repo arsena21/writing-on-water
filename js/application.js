@@ -119,6 +119,7 @@
                 noise:       new Parameter (0.00, true),   // Luminance noise.
                 resistance:  new Parameter (0.00, true),   // Ability of the paint to flow.
                 gravity: GRAVITY,                          // Gravity vector.
+                timestamp: null,                           // Timestamp of the last commit.
                 fromPigment: function (pig) {
                     this.granulation.set (pig.granulation);
                     this.opacity.set     (pig.opacity);
@@ -412,13 +413,15 @@
           */
         animate: function () {
             // Update times.
+            var timestamp;
             var timeDiff = (function (date) {
                 var time = date.getTime();
                 var timeDiff  = time - this.lastTime;
                 this.lastTime = time;
                 GRID.time     = time;
 
-                timeDiff = Math.min (timeDiff, 10.0);
+                timeDiff  = Math.min (timeDiff, 10.0);
+                timestamp = time;
                 return timeDiff;
             }) (new Date());
 
@@ -437,6 +440,13 @@
             var wgl   = this.wgl;
             var U5    = wgl.material5.uniforms;
             var Q     = M.strokeQueue;
+            
+            if (!this.paint.timestamp) {
+                this.paint.timestamp = timestamp;
+            }
+
+            timestamp -= this.paint.timestamp;
+            timestamp /= 60.0 * 1000.0;
 
             // Apply some shader's uniforms:
             // shiny line.
@@ -449,7 +459,7 @@
 
             // Update the particles.
             var s = {};
-            if (GRID.movePaintParticles (this.paint, timeDiff / 10.0, s) > 0) {
+            if (GRID.movePaintParticles (this.paint, timestamp, timeDiff / 10.0, s) > 0) {
                 if (s.pos_changed)
                     wgl.attributes.vtransform.needsUpdate = true;
                 if (s.clr_changed)
@@ -502,7 +512,7 @@
             // Check if the brush is ready.
             if (brush.isReady () && Q.length) {
                 // Extrapolate the points array and process the stroke.
-                this.processStroke (this.extrapolatedQueue (Q));
+                this.processStroke (this.extrapolatedQueue (Q), timestamp);
                 
                 // Update the old points queue.
                 for (var i = 0; i < Q.length; i++) {
@@ -606,7 +616,7 @@
             return queue;
         },
                             
-        processStroke: function (q) {
+        processStroke: function (q, timestamp) {
             var wgl   = this.wgl;
             var brush = this.brush;
             var mouse = this.mouse;
@@ -680,7 +690,7 @@
                                 g:  paint.granulation.value,    // Pigment granulation.
                                 o:  opacity,                    // Pigment opacity.
                                 f:  point.force,                // Force the particle creation.
-                                rt: paint.resistance.value,     // Paint resistance.
+                                stamp: timestamp,               // Deposition timestamp.
                                 is_pylon: false,                // Not a pylon.
                                 stroke: mouse.strokeId          // Stroke Id.
                             },                                  //
@@ -722,7 +732,7 @@
                                     f:  false,                  // Pylons are never forced.
                                     g:  0.0,                    // Ignored.
                                     o:  0.0,                    // Ignored.
-                                    rt: 0.0,                    // Paint resistance.
+                                    stamp: 0.0,                 // Paint resistance.
                                     is_pylon: true,             // A pylon.
                                     stroke: mouse.strokeId      // Stroke Id.
                                 },
@@ -909,6 +919,7 @@
             }
             this.commit_timer = 0;
             this.mouse.strokeId = 0;
+            this.paint.timestamp = null;
             
             // Remove all particles.
             this.removeParticles ();

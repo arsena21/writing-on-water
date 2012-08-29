@@ -436,6 +436,7 @@
                         pxmask: {type: "v4", value: new THREE.Vector4 (1.0, 0.0, 0.0, 0.0)},
                         kernel: {type: "fv", value: [-1.0, 0.0, +1.0, -2.0, 0.0, +2.0, -1.0, 0.0, +1.0]},
                         txstep: {type: "v2", value: new THREE.Vector2 (1.0 / canvas.paper.width, 1.0 / canvas.paper.height)},
+                        inside: {type: "i", value: 0}
                     }
                 });
 
@@ -455,8 +456,8 @@
                     fragmentShader: frag4,
                     vertexShader:   vert3,
                     uniforms:       {
-                        mapweights0: {type: "t",  value: 5, texture: wgl.rtt_acc1},         // Color map weights.
-                        mapweights1: {type: "t",  value: 6, texture: wgl.rtt_acc2},         // Color map weights.
+                        mapweights0: {type: "t",  value: 1, texture: wgl.rtt_acc1},         // Color map weights.
+                        mapweights1: {type: "t",  value: 2, texture: wgl.rtt_acc2}          // Color map weights.
                     }
                 });
                 // Edge filter.
@@ -464,10 +465,13 @@
                     fragmentShader: frag3,
                     vertexShader:   vert3,
                     uniforms:       {
-                        tex:    {type: "t",  value: 0, texture: null},
+                        tex:    {type: "t",  value: 0, texture: null},                  //
+                        mask:   {type: "t",  value: 1, texture: wgl.rtt_stroke},        // Stroke mask.
                         pxmask: {type: "v4", value: new THREE.Vector4 (1.0, 0.0, 0.0, 0.0)},
                         kernel: {type: "fv", value: [-1.0, 0.0, +1.0, -2.0, 0.0, +2.0, -1.0, 0.0, +1.0]},
+                      //kernel: {type: "fv", value: [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]},
                         txstep: {type: "v2", value: new THREE.Vector2 (8.0 / canvas.paper.width, 8.0 / canvas.paper.height)},
+                        inside: {type: "i", value: 1}
                     }
                 }, "tex");
                 // Composer.
