@@ -768,11 +768,27 @@
             }
             
             var U2 = wgl.material2 ? wgl.material2.uniforms : undefined;
+            var U3 = wgl.material3 ? wgl.material3.uniforms : undefined;
             var U5 = wgl.material5 ? wgl.material5.uniforms : undefined;
             wgl.renderer.setClearColor (BLACK, 255);
 
             // Update the stroke texture.
             if (wgl.blobsRTT.length) {
+                if (this.brush.template.bristles) {
+                    // Render the blob tetxure if needed.
+                    var phy = this.brush.physics;
+                    if (phy.invalidated && wgl.bristles.pass) {
+                        wgl.bristles.pass.render (wgl.renderer, null, wgl.bristles.rtt_shape, 0.01);
+                        phy.invalidated = false;
+                    }
+                    
+                    if (U3)
+                        U3.mask.texture = wgl.bristles.rtt_shape;
+                } else {
+                    if (U3)
+                        U3.mask.texture = this.config.blob_tex;
+                }
+                
                 // Update the blob color.
                 wgl.material3.attributes.vcolor.needsUpdate = true;
                 var v = wgl.material3.attributes.vcolor.value;
@@ -1072,7 +1088,7 @@
         mouseUp: function () {
             // Reset the stroke.
             if (this.brush) {
-                this.brush.waterReset (this.brush_wetness);
+                this.brush.reset (this.brush_wetness);
             }
             
             var m = this.mouse;

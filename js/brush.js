@@ -31,12 +31,12 @@
      * FIXME Dynamic brush texture generation would be nice.
      * @constructor
      */
-    window.Brush = function (wgl, callwhenready) {
+    window.Brush = function (utils, wgl, callwhenready) {
         this.ready = false;
         this.water = 1.0;
         this.scale = new THREE.Vector3 (1.0, 1.0, 1.0);
         this.pointer_mesh = wgl.blob_mesh;
-        this.snap_color = false;
+        this.snap_color   = false;
         
         this.palette = new Palette ();
         this.palette.load ("json/pigments.json");
@@ -46,6 +46,7 @@
         this.basecolor = new THREE.Color (0xee0077);
         this.color     = this.basecolor.clone ();
         this.pigment   = null;
+        this.physics   = new BrushPhysics (utils);
 
         var b = this;
         var linear = function (x) {
@@ -92,6 +93,7 @@
                     this.opacity     = 0.0;
                     this.skip        = 1;
                     this.force_color = undefined;
+                    this.bristles    = true;
                     this.drymedia    = false;
                     this.state       = this.state_brush;
                     this.valid       = true;
@@ -126,6 +128,7 @@
                     this.opacity     = 0.5;
                     this.skip        = 1;
                     this.force_color = undefined;
+                    this.bristles    = false;
                     this.drymedia    = true;
                     this.state       = this.state_pencil;
                     this.valid       = true;
@@ -158,6 +161,7 @@
                     this.opacity     = 0.0;
                     this.skip        = 2;
                     this.force_color = undefined;
+                    this.bristles    = false;
                     this.drymedia    = false;
                     this.state       = this.state_brush;
                     this.valid       = true;
@@ -190,6 +194,7 @@
                     this.opacity     = 0.5;
                     this.skip        = 1;
                     this.force_color = new THREE.Color (0xffffff);
+                    this.bristles    = false;
                     this.drymedia    = true;
                     this.state       = this.state_eraser;
                     this.valid       = true;
@@ -252,11 +257,15 @@
             return this.ready;
         };
         
-        this.waterReset = function (wetness) {
+        this.reset = function (wetness) {
             if (wetness) {
                 this.water = wetness;
             }
             this.color = this.basecolor.clone ();
+            
+            if (this.physics) {
+                this.physics.reset ();
+            }
         };
         
         /**
@@ -269,6 +278,7 @@
             }
             
             this.water = Math.min (Math.max (this.water + dw, 0.0), 1.0);
+            this.physics.wetness (this.water);
         };
         
         /**
@@ -287,6 +297,10 @@
             if (this.ready && this.pointer_mesh) {
                 this.pointer_mesh.position = pos;
             }
+        };
+        
+        this.changePressure = function (p) {
+            //this.physics.pressure (p);
         };
         
         /**
@@ -320,7 +334,15 @@
             }
             
             this.basecolor = c;
-            this.waterReset ();
+            this.reset ();
+        };
+        
+        /// Rebuild the brush shape.
+        this.updateShape = function (renderer) {
+            if (this.physics && renderer) {
+                this.physics.updateShape (renderer);
+                this.blob_texture = this.physics.shape;
+            }
         };
     };
     
@@ -328,21 +350,82 @@
      * Brush pointer generator.
      * @constructor
      */
-    function BrushPhysics () {
-        this.resolution = 16;
-        this.mesh = [];
+    function BrushPhysics (utils) {
+        var resolution  = 64;
+        var refreshRate = 100; // ms
+        
+        this.size  = 128;
+        this.mesh  = [];
+        this.invalidated = false;
+        this.lastUpdate = new Date ().getTime ();
         
         // Bristle blobs.
-        for (var i = 0; i < this.resolution; i++) {
-            this.mesh.push ({
-                position: new THREE.Vector3 (
-                    0.5 - Math.random (),
-                    0.5 - Math.random (),
-                    0.0
-                ),
-                size: 1.0 / this.resolution
-            });
+        for (var i = 0; i < resolution; i++) {
+            var p = {
+                position: new THREE.Vector3 (),
+                scale:    new THREE.Vector3 ()
+            };
+            
+            this.mesh.push (p);
         }
+        
+        /// Mark the model as invalidated
+        /// regarding the update rate.
+        this.invalidate = function (force) {
+            var time = new Date ().getTime ();
+            if (time - this.lastUpdate > refreshRate || force) {
+                this.lastUpdate = time;
+                this.invalidated = true;
+                return true;
+            } else
+                return false;
+        };
+        
+        /// Change the brush wetness.
+        this.wetness = function (w) {
+            if (this.invalidate (false)) {
+                var s = w * 8.0 / resolution;
+                for (var i = 0, len = this.mesh.length; i < len; i++) {
+                   this.mesh[i].scale.set (s, s, s);
+                }
+            }
+        };
+        
+        /// Generate a random value with normal distribution.
+        this.gaussian = function (dev) {
+            if (this.nextGaussian) {
+                var s = this.nextGaussian;
+                this.nextGaussian = undefined;
+                return dev * s;
+            } else {
+                var v1, v2, s;
+                do { 
+                    v1 = 2 * Math.random () - 1;   // between -1.0 and 1.0
+                    v2 = 2 * Math.random () - 1;   // between -1.0 and 1.0
+                    s = v1 * v1 + v2 * v2;
+                } while (s >= 1 || s == 0);
+                
+                var multiplier = Math.sqrt (-2 * Math.log (s) / s);
+                this.nextGaussian = v2 * multiplier;
+                return dev * v1 * multiplier;
+            }
+        };
+        
+        /// Randomize the bristle blobs' positions.
+        this.reset = function () {
+            this.invalidate (true);
+            
+            for (var i = 0, len = this.mesh.length; i < len; i++) {
+                this.mesh[i].position.set (
+                    Math.max (Math.min (64.0, this.gaussian (32.0)), -64.0),
+                    0.0,
+                    Math.max (Math.min (64.0, this.gaussian (32.0)), -64.0)
+                );
+            }
+        };
+        
+        this.reset ();
+        this.wetness (1.0);
     };
 
     /**

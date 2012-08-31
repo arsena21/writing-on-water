@@ -239,7 +239,7 @@
                         if (canvas) {
                             canvas.brush_wetness = value;
                             if (canvas.brush) {
-                                canvas.brush.waterReset (canvas.brush_wetness);
+                                canvas.brush.reset (canvas.brush_wetness);
                             }
                         }
 
