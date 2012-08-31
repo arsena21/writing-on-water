@@ -34,12 +34,14 @@ const vec4 T = vec4 (0.01, 0.01, 0.01, 0.01);
 
 void main() {
     // Stroke mask.
+    /*
     vec4 m = vec4 (
         texture2D (mask, tx1 + vec2 (-txstep.x, 0.0)).r,
         texture2D (mask, tx1 + vec2 (+txstep.x, 0.0)).r,
         texture2D (mask, tx1 + vec2 (0.0, -txstep.y)).r,
         texture2D (mask, tx1 + vec2 (0.0, +txstep.y)).r
     );
+    */
     
     // Texels.
     vec3 t012 = vec3 (
