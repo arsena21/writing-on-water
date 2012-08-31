@@ -89,9 +89,9 @@ void main () {
 
   // Expand the bump-map into a normalized signed
   // vector and apply the texture intencity.
-  bmp = mix (vec3 (0.0, 0.0, 1.0), 2.0 * bmp - 1.0, bump_intensity);
+  bmp = 2.0 * bmp - 1.0;
   // Find the dot product between the light direction and the normal.
-  float NdotL = max (dot (bmp, lightdir), 0.0);
+  float NdotL = mix (1.0, max (dot (bmp, lightdir), 0.0), bump_intensity);
 
   // Resulting color.
   vec3 c;
@@ -154,7 +154,8 @@ void main () {
         (atan (bloom.z, bloom.y) + 1.5708) * 0.3183,
         length (tx4)
     );
-    bloom.r *= snoise2 (bloom_tx * vec2 (128.0, 32.0));
+    bloom.r *= snoise2 (bloom_tx * vec2 (32.0, 8.0));
+    bloom.r = 0.0;//max (bloom.r, 0.0);
   
     // Edges have higher density.
     edge_intensity *= edge;
@@ -180,7 +181,7 @@ void main () {
     // Apply the opacity.
     c = mix (S * bg.rgb, K, opacity);
     // Darken the edges.
-    c *= 1.0 - (edge_intensity/* + bloom.r*/) * (1.0 - clr_y) * density * density;
+    c *= 1.0 - (edge_intensity + bloom.r) * (1.0 - clr_y) * density * density;
     // Fade to BG if outside the mask.
     c = mix (bg.rgb, c, w.r);
     // Apply the bump map.
