@@ -22,14 +22,35 @@
  * THE SOFTWARE.
  */
 
-(function ($) {
+define (function () {
+
+    function Wpress (x, h) {
+        /*if (x > h) return 0.0;
+        else */return 14.32394 / Math.pow (h, 6.0) * Math.pow (h - x, 3.0);
+    }
+    function Wwisc (x, h) {
+        /*if (x > h) return 0.0;
+        else */return 14.32394 / Math.pow (h, 6.0) * (h - x);
+    }
+    function Wpoly6 (x2, h) {
+        /*if (x2 > h * h) return 0.0;
+        */return 1.71588923 / Math.pow (h, 9.0) * Math.pow (h * h - x2, 3);
+    }
+
+    // Optimized for h == 1.
+    function Wpoly6_h1 (x2) {
+        var x21 = 1.0 - x2;
+        return 1.71588923 * x21 * x21 * x21;//Math.pow (1.0 - x2, 3);
+    }
+   
+
     /**
      * Particle system with the grid helper
      * for faster neighbours search.
      * FIXME Variable particle size is needed (larger particles for broad washes).
      * @constructor
      */
-    window.ParticleGrid = function () {
+    return new function () {
         var PARTICLE_R     = 32;        // Normal particle radius.
         var PARTICLE_R2    = 32 * 32;   // Squared value.
         var PARTICLE_H     = 32;        // Radius of the smoothing kernel. FIXME Further investigation is needed.
@@ -638,25 +659,5 @@
 
             return 1;
         };
-    };
-
-    function Wpress (x, h) {
-        /*if (x > h) return 0.0;
-        else */return 14.32394 / Math.pow (h, 6.0) * Math.pow (h - x, 3.0);
-    }
-    function Wwisc (x, h) {
-        /*if (x > h) return 0.0;
-        else */return 14.32394 / Math.pow (h, 6.0) * (h - x);
-    }
-    function Wpoly6 (x2, h) {
-        /*if (x2 > h * h) return 0.0;
-        */return 1.71588923 / Math.pow (h, 9.0) * Math.pow (h * h - x2, 3);
-    }
-
-    // Optimized for h == 1.
-    function Wpoly6_h1 (x2) {
-        var x21 = 1.0 - x2;
-        return 1.71588923 * x21 * x21 * x21;//Math.pow (1.0 - x2, 3);
-    }
-    
-}) (jQuery);
+    }; 
+});

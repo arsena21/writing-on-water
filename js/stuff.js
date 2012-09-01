@@ -22,50 +22,11 @@
  * THE SOFTWARE.
  */
 
-(function ($) {
-    /**
-      * Script loading helper.
-      * @constructor
-      */
-    window.MyLoader = function (url, name, status, callback) {
-        this.url = url;
-        this.name = name;
-        this.status = status;
-        this.callback = callback;
-
-        var l = this;
-        $.ajax ( {
-            url: url,
-            success: function (data) {
-                l.callback[l.name] = data;
-            },
-            error: function (jqXHR, textStatus, errorThrown) {
-                if (l.status) {
-                    l.status.set (errorThrown, false);
-                }
-            },
-            dataType: 'text'
-        } );
-    };
-
-    /**
-     * Show the alert box with a given message.
-     */
-    window.alertBox = function (selector, msg) {
-        var div = $("#" + selector + "box");
-        $("#" + selector + "_text").html (msg);
-        if (!div.is(':visible')) {
-            div.show (200);
-            div.oneTime ("5s", function() {
-                $(this).hide (200);
-            });
-        }
-    }
-
+define (['js/wglutils'], function () {
     /**
      * Slider with the label and "auto" button.
      */
-    var AdvancedSlider = Backbone.View.extend ({
+    AdvancedSlider = Backbone.View.extend ({
         tagName: "div",
 
         initialize: function () {
@@ -181,340 +142,356 @@
         }
     });
 
-    /**
-     * Controls pane.
-     */
-    window.ControlsView = Backbone.View.extend ({
-        el : $('#controls'),
-        events: {
-            'click input#debug':       'toggleDebug',
-            'click input#gravity':     'toggleGravity',
-            'click button#save':       'saveCanvas',
-            'click button#commit':     'commitCanvas',
-            'click button#clear':      'clearCanvas',
-            'click input#autocommit':  'toggleAutocommit',
-            'change input#committime': 'toggleAutocommit'
+    return {
+        /**
+         * Show the alert box with a given message.
+         */
+        alertBox: function (selector, msg) {
+            var div = $("#" + selector + "box");
+            $("#" + selector + "_text").html (msg);
+            if (!div.is(':visible')) {
+                div.show (200);
+                div.oneTime ("5s", function() {
+                    $(this).hide (200);
+                });
+            }
         },
 
-        initialize: function () {
-            _.bindAll (this, 'render', 'toggleDebug', 'toggleGravity',
-                       'saveCanvas', 'toggleAutocommit', 'commitCanvas',
-                       'clearCanvas', 'updateSliders');
+        /**
+         * Controls pane.
+         */
+        ControlsView: Backbone.View.extend ({
+            el : $('#controls'),
+            events: {
+                'click input#debug':       'toggleDebug',
+                'click input#gravity':     'toggleGravity',
+                'click button#save':       'saveCanvas',
+                'click button#commit':     'commitCanvas',
+                'click button#clear':      'clearCanvas',
+                'click input#autocommit':  'toggleAutocommit',
+                'change input#committime': 'toggleAutocommit'
+            },
 
-            var canvas = this.canvas = this.options.canvas;
-            this.def_values = {
-                brush_sz: 32,
-                brush_wet: 90,
-                opacity: 1,
-                granulation: 50,
-                noise: 0,
-                auto_commit: 2,
-                max_particles: 2000
-            };
+            initialize: function () {
+                _.bindAll (this, 'render', 'toggleDebug', 'toggleGravity',
+                           'saveCanvas', 'toggleAutocommit', 'commitCanvas',
+                           'clearCanvas', 'updateSliders');
 
-            // Create some sliders.
-            this.sliders = {
-                brushsz: new AdvancedSlider ({
-                    name:    "brushsz",
-                    title:   "Brush size",
-                    measure: "px",
-                    value:   this.def_values.brush_sz,
-                    min: 1,
-                    max: 64,
-                    hide_auto_button: true,
-                    value_filter: function (value) {
-                        if (canvas) {
-                            canvas.setBrushScale (2.0 * value);
-                        }
+                var canvas = this.canvas = this.options.canvas;
+                this.def_values = {
+                    brush_sz: 32,
+                    brush_wet: 90,
+                    opacity: 1,
+                    granulation: 50,
+                    noise: 0,
+                    auto_commit: 2,
+                    max_particles: 2000
+                };
 
-                        return value;
-                    }
-                }),
-                wetness: new AdvancedSlider ({
-                    name:  "wetness",
-                    title: "Brush wetness:",
-                    value:  this.def_values.brush_wet,
-                    hide_auto_button: true,
-                    value_filter: function (value) {
-                        if (canvas) {
-                            canvas.brush_wetness = value;
-                            if (canvas.brush) {
-                                canvas.brush.reset (canvas.brush_wetness);
+                // Create some sliders.
+                this.sliders = {
+                    brushsz: new AdvancedSlider ({
+                        name:    "brushsz",
+                        title:   "Brush size",
+                        measure: "px",
+                        value:   this.def_values.brush_sz,
+                        min: 1,
+                        max: 64,
+                        hide_auto_button: true,
+                        value_filter: function (value) {
+                            if (canvas) {
+                                canvas.setBrushScale (2.0 * value);
                             }
+
+                            return value;
                         }
+                    }),
+                    wetness: new AdvancedSlider ({
+                        name:  "wetness",
+                        title: "Brush wetness:",
+                        value:  this.def_values.brush_wet,
+                        hide_auto_button: true,
+                        value_filter: function (value) {
+                            if (canvas) {
+                                canvas.brush_wetness = value;
+                                if (canvas.brush) {
+                                    canvas.brush.reset (canvas.brush_wetness);
+                                }
+                            }
 
-                        return value;
-                    }
-                }),
-                opacity: new AdvancedSlider ({
-                    name:   "opacity",
-                    title:  "Opacity",
-                    value:  this.def_values.opacity,
-                    auto:   true,
-                    target: canvas.paint.opacity
-                }),
-                granulation: new AdvancedSlider ({
-                    name:   "granulation",
-                    title:  "Granulation",
-                    value:  this.def_values.granulation,
-                    auto:   true,
-                    target: canvas.paint.granulation
-                }),
-                noise: new AdvancedSlider ({
-                    name:   "noise",
-                    title:  "Noise",
-                    value:  this.def_values.noise,
-                    auto:   true,
-                    target: canvas.paint.noise
-                }),
-                bordersz: new AdvancedSlider ({
-                    name:    "bordersz",
-                    title:   "Masked border size",
-                    measure: "px",
-                    value:   16,
-                    min: 0,
-                    max: 64,
-                    hide_auto_button: true,
-                    value_filter: function (value) {
-                        if (canvas) {
-                            var w = 64.0 * value / canvas.paper.width;
-                            var h = 64.0 * value / canvas.paper.height;
-                            canvas.paper.border.set (w, h, w, h);
+                            return value;
                         }
+                    }),
+                    opacity: new AdvancedSlider ({
+                        name:   "opacity",
+                        title:  "Opacity",
+                        value:  this.def_values.opacity,
+                        auto:   true,
+                        target: canvas.paint.opacity
+                    }),
+                    granulation: new AdvancedSlider ({
+                        name:   "granulation",
+                        title:  "Granulation",
+                        value:  this.def_values.granulation,
+                        auto:   true,
+                        target: canvas.paint.granulation
+                    }),
+                    noise: new AdvancedSlider ({
+                        name:   "noise",
+                        title:  "Noise",
+                        value:  this.def_values.noise,
+                        auto:   true,
+                        target: canvas.paint.noise
+                    }),
+                    bordersz: new AdvancedSlider ({
+                        name:    "bordersz",
+                        title:   "Masked border size",
+                        measure: "px",
+                        value:   16,
+                        min: 0,
+                        max: 64,
+                        hide_auto_button: true,
+                        value_filter: function (value) {
+                            if (canvas) {
+                                var w = 64.0 * value / canvas.paper.width;
+                                var h = 64.0 * value / canvas.paper.height;
+                                canvas.paper.border.set (w, h, w, h);
+                            }
 
-                        return value;
-                    }
-                }),
-                texture: new AdvancedSlider ({
-                    name:    "texture",
-                    title:   "Texture",
-                    measure: "%",
-                    value:   10,
-                    min: 0,
-                    max: 100,
-                    hide_auto_button: true,
-                    target: canvas.paper.texture
-                }),
-                maxparticles: new AdvancedSlider ({
-                    name:    "maxparticles",
-                    title:   "Max particles",
-                    measure: " ",
-                    value:   this.def_values.max_particles,
-                    min: 100,
-                    max: 10000,
-                    hide_auto_button: true,
-                    value_filter: function (value) {
-                        if (canvas) {
-                            canvas.setMaxParticles (10000 * value);
+                            return value;
                         }
+                    }),
+                    texture: new AdvancedSlider ({
+                        name:    "texture",
+                        title:   "Texture",
+                        measure: "%",
+                        value:   10,
+                        min: 0,
+                        max: 100,
+                        hide_auto_button: true,
+                        target: canvas.paper.texture
+                    }),
+                    maxparticles: new AdvancedSlider ({
+                        name:    "maxparticles",
+                        title:   "Max particles",
+                        measure: " ",
+                        value:   this.def_values.max_particles,
+                        min: 100,
+                        max: 10000,
+                        hide_auto_button: true,
+                        value_filter: function (value) {
+                            if (canvas) {
+                                canvas.setMaxParticles (10000 * value);
+                            }
 
-                        return value;
+                            return value;
+                        }
+                    })
+                };
+
+                this.render ();
+            },
+
+            render: function () {
+                var canvas = this.canvas;
+                var ctel = $("#controls_template");
+                var vars = this.def_values;
+                var template = _.template (ctel.html(), vars);
+                $(this.el).html (template);
+                var ctl = this;
+
+                // Init the UI stuff.
+                //
+                $("#accordion").accordion ({
+                    collapsible: true,
+                    autoHeight: false
+                });
+                $("#commit").button();
+                $("#clear").button();
+                $("#save").button();
+                $("#radioi").buttonset().change (function () {
+                    if (canvas) {
+                        if ($("#i_pencil").is (":checked")) {
+                            canvas.setInstrument ("pencil");
+                        } else
+                            if ($("#i_brush").is (":checked")) {
+                                canvas.setInstrument ("brush");
+                            } else
+                                if ($("#i_splatter").is (":checked")) {
+                                    canvas.setInstrument ("splatter");
+                                } else
+                                    if ($("#i_eraser").is (":checked")) {
+                                        canvas.setInstrument ("eraser");
+                                    }
                     }
-                })
-            };
+                });
+                $("#controls_brush_inset").append (this.sliders.brushsz.el);
+                $("#controls_brush_inset").append (this.sliders.wetness.el);
+                $("#controls_paint").append (this.sliders.opacity.el);
+                $("#controls_paint").append (this.sliders.granulation.el);
+                $("#controls_paint").append (this.sliders.noise.el);
+                $("#controls_document").append (this.sliders.bordersz.el);
+                $("#controls_document").append (this.sliders.texture.el);
+                $("#controls_debug").append (this.sliders.maxparticles.el);
+                $("#snapcolor").click (function () {
+                    if (canvas) {
+                        if (canvas.brush) {
+                            canvas.brush.snap_color = $("#snapcolor:checked").val ();
+                        }
+                    }
+                });
+            },
 
-            this.render ();
-        },
+            toggleDebug: function () {
+                if (this.canvas) {
+                    var ch = $("#debug:checked").val ();
+                    this.canvas.toggleDebug (ch);
+                }
+            },
 
-        render: function () {
-            var canvas = this.canvas;
-            var ctel = $("#controls_template");
-            var vars = this.def_values;
-            var template = _.template (ctel.html(), vars);
-            $(this.el).html (template);
-            var ctl = this;
-
-            // Init the UI stuff.
-            //
-            $("#accordion").accordion ({
-                collapsible: true,
-                autoHeight: false
-            });
-            $("#commit").button();
-            $("#clear").button();
-            $("#save").button();
-            $("#radioi").buttonset().change (function () {
-                if (canvas) {
-                    if ($("#i_pencil").is (":checked")) {
-                        canvas.setInstrument ("pencil");
-                    } else
-                    if ($("#i_brush").is (":checked")) {
-                        canvas.setInstrument ("brush");
-                    } else
-                    if ($("#i_splatter").is (":checked")) {
-                        canvas.setInstrument ("splatter");
-                    } else
-                    if ($("#i_eraser").is (":checked")) {
-                        canvas.setInstrument ("eraser");
+            toggleGravity: function () {
+                if (this.canvas) {
+                    if ($("#gravity:checked").val ()) {
+                        this.canvas.resetGlobalVectors (1.0);
+                    } else {
+                        this.canvas.resetGlobalVectors (0.0);
                     }
                 }
-            });
-            $("#controls_brush_inset").append (this.sliders.brushsz.el);
-            $("#controls_brush_inset").append (this.sliders.wetness.el);
-            $("#controls_paint").append (this.sliders.opacity.el);
-            $("#controls_paint").append (this.sliders.granulation.el);
-            $("#controls_paint").append (this.sliders.noise.el);
-            $("#controls_document").append (this.sliders.bordersz.el);
-            $("#controls_document").append (this.sliders.texture.el);
-            $("#controls_debug").append (this.sliders.maxparticles.el);
-            $("#snapcolor").click (function () {
-                if (canvas) {
-                    if (canvas.brush) {
-                        canvas.brush.snap_color = $("#snapcolor:checked").val ();
+            },
+
+            toggleAutocommit: function () {
+                if (this.canvas) {
+                    if ($("#autocommit:checked").val ()) {
+                        this.canvas.COMMIT_TIME = parseInt ($("#committime").val ()) * 1000;
+                        this.canvas.auto_commit = true;
+                        if (this.canvas.el_status) {
+                            this.canvas.el_status.set (
+                                "Autocommit set to " + (this.canvas.COMMIT_TIME / 1000) + " second(s).",
+                                true
+                            );
+                        }
+                    } else {
+                        this.canvas.COMMIT_TIME  = 0;
+                        this.canvas.commit_timer = 0;
+                        this.canvas.auto_commit  = false;
+                        if (this.canvas.el_status) {
+                            this.canvas.el_status.set (
+                                "Autocommit disabled.",
+                                true
+                            );
+                        }
                     }
                 }
-            });
-        },
+            },
 
-        toggleDebug: function () {
-            if (this.canvas) {
-                var ch = $("#debug:checked").val ();
-                this.canvas.toggleDebug (ch);
-            }
-        },
-
-        toggleGravity: function () {
-            if (this.canvas) {
-                if ($("#gravity:checked").val ()) {
-                    this.canvas.resetGlobalVectors (1.0);
-                } else {
-                    this.canvas.resetGlobalVectors (0.0);
-                }
-            }
-        },
-
-        toggleAutocommit: function () {
-            if (this.canvas) {
-                if ($("#autocommit:checked").val ()) {
-                    this.canvas.COMMIT_TIME = parseInt ($("#committime").val ()) * 1000;
-                    this.canvas.auto_commit = true;
-                    if (this.canvas.el_status) {
-                        this.canvas.el_status.set (
-                            "Autocommit set to " + (this.canvas.COMMIT_TIME / 1000) + " second(s).",
-                            true
-                        );
-                    }
-                } else {
-                    this.canvas.COMMIT_TIME  = 0;
+            commitCanvas: function () {
+                if (this.canvas) {
+                    this.canvas.commitGL ();
                     this.canvas.commit_timer = 0;
-                    this.canvas.auto_commit  = false;
-                    if (this.canvas.el_status) {
-                        this.canvas.el_status.set (
-                            "Autocommit disabled.",
-                            true
-                        );
+                }
+            },
+
+            clearCanvas: function () {
+                if (this.canvas) {
+                    this.canvas.clear ();
+                }
+            },
+
+            /// Render the whole scene and save the result
+            /// using the toDataUrl() method.
+            saveCanvas: function () {
+                if (this.canvas) {
+                    var o   = $("#canvas")[0].children[0];
+                    var cam = this.canvas.wgl.camera;
+                    var pos = cam.position.clone ();
+                    var rot = cam.rotation.clone ();
+                    var sca = cam.scale.clone ();
+                    var U2  = this.canvas.wgl.material2.uniforms;
+                    var tc  = U2.ftransform.value.clone ();
+
+                    // Resize the canvas to include thw whole painting.
+                    // FIXME There must be some more elegant way through this...
+                    var widthbk  = $("#canvas").width ();
+                    var heightbk = $("#canvas").height ();
+                    $("#canvas").width (this.canvas.paper.width);
+                    $("#canvas").height (this.canvas.paper.height);
+                    this.canvas.resized ();
+
+                    // Render the scene with identity transform.
+                    cam.position = new THREE.Vector3 (0, 350, 0);
+                    cam.lookAt (new THREE.Vector3 (0, 0, 0));
+                    cam.rotation.z = 0;
+
+                    U2.ftransform.value.identity ();      // Identity transform.
+                    this.canvas.paper.borderclr.w = 0.0;  // Disable the masked border.
+                    this.canvas.renderGL (false);
+                    var strDataURI;
+                    if (o) {
+                        // Try JPEG first...
+                        strDataURI = o.toDataURL ("image/jpeg");
+                        if (!strDataURI) {
+                            strDataURI = o.toDataURL ();
+                        }
+                    }
+
+                    // Restore the canvas size.
+                    $("#canvas").width  (widthbk);
+                    $("#canvas").height (heightbk);
+                    this.canvas.resized ();
+
+                    // Restore the transforms.
+                    U2.ftransform.value = tc;
+                    this.canvas.paper.borderclr.w = 1.0;
+                    cam.position = pos;
+                    cam.rotation = rot;
+                    cam.scale    = sca;
+
+                    if (strDataURI) {
+                        window.open (strDataURI);
+                    }
+
+                    window.alertBox ("warning", "Canvas has been saved.");
+                }
+            },
+
+            updateSliders: function (pig) {
+                if (this.canvas) {
+                    var p = this.canvas.paint;
+                    if (p.opacity.auto) {
+                        this.sliders.opacity.set (100 * pig.opacity);
+                    }
+                    if (p.granulation.auto) {
+                        this.sliders.granulation.set (100 * pig.granulation);
                     }
                 }
             }
-        },
+        }),
 
-        commitCanvas: function () {
-            if (this.canvas) {
-                this.canvas.commitGL ();
-                this.canvas.commit_timer = 0;
-            }
-        },
+        /**
+         * Status-box element.
+         */
+        StatusView: Backbone.View.extend ({
+            el : $('#canvas-status'),
 
-        clearCanvas: function () {
-            if (this.canvas) {
-                this.canvas.clear ();
-            }
-        },
+            initialize: function (){
+                _.bindAll (this, 'render', 'set');
 
-        /// Render the whole scene and save the result
-        /// using the toDataUrl() method.
-        saveCanvas: function () {
-            if (this.canvas) {
-                var o   = $("#canvas")[0].children[0];
-                var cam = this.canvas.wgl.camera;
-                var pos = cam.position.clone ();
-                var rot = cam.rotation.clone ();
-                var sca = cam.scale.clone ();
-                var U2  = this.canvas.wgl.material2.uniforms;
-                var tc  = U2.ftransform.value.clone ();
+                this.render();
+            },
 
-                // Resize the canvas to include thw whole painting.
-                // FIXME There must be some more elegant way through this...
-                var widthbk  = $("#canvas").width ();
-                var heightbk = $("#canvas").height ();
-                $("#canvas").width (this.canvas.paper.width);
-                $("#canvas").height (this.canvas.paper.height);
-                this.canvas.resized ();
+            render : function () {
+                $(this.el).append ("<i class='left'></i>");
+                $(this.el).append ("<i class='right'></i>");
+                $(this.el).append ("<div class='clear'></div>");
+            },
 
-                // Render the scene with identity transform.
-                cam.position = new THREE.Vector3 (0, 350, 0);
-                cam.lookAt (new THREE.Vector3 (0, 0, 0));
-                cam.rotation.z = 0;
-
-                U2.ftransform.value.identity ();      // Identity transform.
-                this.canvas.paper.borderclr.w = 0.0;  // Disable the masked border.
-                this.canvas.renderGL (false);
-                var strDataURI;
-                if (o) {
-                    // Try JPEG first...
-                    strDataURI = o.toDataURL ("image/jpeg");
-                    if (!strDataURI) {
-                        strDataURI = o.toDataURL ();
-                    }
-                }
-
-                // Restore the canvas size.
-                $("#canvas").width  (widthbk);
-                $("#canvas").height (heightbk);
-                this.canvas.resized ();
-
-                // Restore the transforms.
-                U2.ftransform.value = tc;
-                this.canvas.paper.borderclr.w = 1.0;
-                cam.position = pos;
-                cam.rotation = rot;
-                cam.scale    = sca;
-
-                if (strDataURI) {
-                    window.open (strDataURI);
-                }
-
-                window.alertBox ("warning", "Canvas has been saved.");
-            }
-        },
-
-        updateSliders: function (pig) {
-            if (this.canvas) {
-                var p = this.canvas.paint;
-                if (p.opacity.auto) {
-                    this.sliders.opacity.set (100 * pig.opacity);
-                }
-                if (p.granulation.auto) {
-                    this.sliders.granulation.set (100 * pig.granulation);
+            set : function (text, left) {
+                if (left) {
+                    $("i.left", this.el).html (text);
+                } else {
+                    $("i.right", this.el).html (text);
                 }
             }
-        }
-    });
-
-    /**
-     * Status-box element.
-     */
-    window.StatusView = Backbone.View.extend ({
-        el : $('#canvas-status'),
-
-        initialize: function (){
-          _.bindAll (this, 'render', 'set');
-
-          this.render();
-        },
-
-        render : function () {
-          $(this.el).append ("<i class='left'></i>");
-          $(this.el).append ("<i class='right'></i>");
-          $(this.el).append ("<div class='clear'></div>");
-        },
-
-        set : function (text, left) {
-            if (left) {
-                $("i.left", this.el).html (text);
-            } else {
-                $("i.right", this.el).html (text);
-            }
-        }
-    });
-}) (jQuery);
+        })
+    }
+});

@@ -129,6 +129,21 @@
   </script>
 
   <script type="text/javascript" src="thirdparty/require.js"></script>
+  <script type="text/javascript">
+    requirejs.config ({
+    shim: {
+        'backbone': {
+            deps: ['underscore', 'jquery'],
+            exports: 'Backbone'
+        },
+        'jquery.timers': {
+            deps: ['jquery']
+        }
+    }
+    });
+
+    //require (['thirdparty/jquery-1.7.2.min']);
+  </script>
   <script type="text/javascript" src="thirdparty/jquery-1.7.2.min.js"></script>
   <script type="text/javascript" src="thirdparty/jquery.timers.js"></script>
   <script type="text/javascript" src="thirdparty/jquery.session.js"></script>
@@ -144,10 +159,15 @@
   <script type="text/javascript" src="thirdparty/MaskPass.js"></script>
   <script type="text/javascript" src="thirdparty/EffectComposer.js"></script>
   <script type="text/javascript" src="farbtastic/farbtastic.js"></script>
-  <script type="text/javascript" src="js/wglutils.js"></script>
-  <script type="text/javascript" src="js/particles.js"></script>
-  <script type="text/javascript" src="js/brush.js"></script>
-  <script type="text/javascript" src="js/stuff.js"></script>
-  <script type="text/javascript" src="js/application.js"></script>
+  <script type="text/javascript">
+    // Particle system.
+    var GRID  = undefined;
+    require (['js/particles'], function (grid) {
+        GRID = grid;
+    });
+
+    // Application.
+    require (['js/application']);
+  </script>
 </body>
 </html>

@@ -22,7 +22,8 @@
  * THE SOFTWARE.
  */
 
-(function($){
+define (['js/particles'], function () {
+    var $ = jQuery;
     var canvas;
     var status;
     var controls;
@@ -31,10 +32,7 @@
     // Environment.
     var GRAVITY = new THREE.Vector3 (0.0, 0.0, 0.0);
     var LIGHT   = new THREE.Vector3 (1.0, 1.0, 10.0);
-
-    // Particle system.
-    var GRID = new window.ParticleGrid ();
-    var MYWGL;
+    var MYWGL   = undefined;
 
     // Constants.
     /** @const */
@@ -42,6 +40,31 @@
     /** @const */
     var BLACK = new THREE.Color (0x000000);
     
+    /**
+     * Script loading helper.
+     * @constructor
+     */
+    var MyLoader = function (url, name, status, callback) {
+        this.url = url;
+        this.name = name;
+        this.status = status;
+        this.callback = callback;
+        
+        var l = this;
+        $.ajax ( {
+            url: url,
+            success: function (data) {
+                l.callback[l.name] = data;
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                if (l.status) {
+                    l.status.set (errorThrown, false);
+                }
+            },
+            dataType: 'text'
+        } );
+    };
+
     /**
       * Canvas element.
       */
@@ -156,19 +179,21 @@
             this.commit_timer = 0;                          // Time left before the wet layer commit.
             this.postcommit   = 0;                          // Time left after commit timer elapsed.
             this.shiney = 0.0;                              // Shiny bar's state.
-          
+
+            var me = this;
+
             // Load the shaders.
-            new window.MyLoader ("glsl/frag_tx.glsl",      "frag_tx",      status, this.config.shaders);
-            new window.MyLoader ("glsl/frag_clr.glsl",     "frag_clr",     status, this.config.shaders);
-            new window.MyLoader ("glsl/frag_blob.glsl",    "frag_blob",    status, this.config.shaders);
-            new window.MyLoader ("glsl/frag_acc.glsl",     "frag_acc",     status, this.config.shaders);
-            new window.MyLoader ("glsl/frag_eff.glsl",     "frag_eff",     status, this.config.shaders);
-            new window.MyLoader ("glsl/frag_norm.glsl",    "frag_norm",    status, this.config.shaders);
-            new window.MyLoader ("glsl/frag_sobel.glsl",   "frag_sobel",   status, this.config.shaders);
-            new window.MyLoader ("glsl/vert_1.glsl",       "vert_1",       status, this.config.shaders);
-            new window.MyLoader ("glsl/vert_blob.glsl",    "vert_blob",    status, this.config.shaders);
-            new window.MyLoader ("glsl/vert_tr.glsl",      "vert_tr",      status, this.config.shaders);
-            new window.MyLoader ("glsl/vert_acc.glsl",     "vert_acc",     status, this.config.shaders);
+            new MyLoader ("glsl/frag_tx.glsl",      "frag_tx",      status, this.config.shaders);
+            new MyLoader ("glsl/frag_clr.glsl",     "frag_clr",     status, this.config.shaders);
+            new MyLoader ("glsl/frag_blob.glsl",    "frag_blob",    status, this.config.shaders);
+            new MyLoader ("glsl/frag_acc.glsl",     "frag_acc",     status, this.config.shaders);
+            new MyLoader ("glsl/frag_eff.glsl",     "frag_eff",     status, this.config.shaders);
+            new MyLoader ("glsl/frag_norm.glsl",    "frag_norm",    status, this.config.shaders);
+            new MyLoader ("glsl/frag_sobel.glsl",   "frag_sobel",   status, this.config.shaders);
+            new MyLoader ("glsl/vert_1.glsl",       "vert_1",       status, this.config.shaders);
+            new MyLoader ("glsl/vert_blob.glsl",    "vert_blob",    status, this.config.shaders);
+            new MyLoader ("glsl/vert_tr.glsl",      "vert_tr",      status, this.config.shaders);
+            new MyLoader ("glsl/vert_acc.glsl",     "vert_acc",     status, this.config.shaders);
             
             var c = this.config;
             // Paper normal map.
@@ -189,67 +214,68 @@
             c.particle_tex.minFilter = THREE.LinearFilter;
             
             // THREE.js stuff init.
-            MYWGL = new window.MyWglStuff (this);
-            MYWGL.initStuff ();
-            
-            // Declare some useful functions here.
-            var wgl   = this.wgl;
-            var mouse = this.mouse;
-            //var canvas = this;
-
-            // Particles processor.
-            /* FIXME Someday.
-            this.worker = new Worker ("js/particles_worker.js");
-            this.worker.onmessage = function (e) {
-            };
-            this.worker.postMessage ({command: "startloop"});
-            */
-
-            /// This function is called for each updated particle
-            /// and used to keep in sync the webgl attributes.
-            this.particleChanged = function (idx, t, c, pig) {
-                var a  = wgl.attributes;
-                var vo = a.vtransform.value;
-                var vc = a.vcolor.value;
-                var vp = a.vpigment.value;
-
-                // Particle's offset and scale.
-                vo[idx + 0] = t;
-                vo[idx + 1] = t;
-                vo[idx + 2] = t;
-                vo[idx + 3] = t;
-                // Particle's color.
-                vc[idx + 0] = c;
-                vc[idx + 1] = c;
-                vc[idx + 2] = c;
-                vc[idx + 3] = c;
-                // Pigment properties.
-                vp[idx + 0] = pig;
-                vp[idx + 1] = pig;
-                vp[idx + 2] = pig;
-                vp[idx + 3] = pig;
+            require (['js/wglutils'], function (Utils) {
+                MYWGL = new Utils (me);
+                MYWGL.initStuff ();
                 
-                a.vcolor.needsUpdate     = true;
-                a.vtransform.needsUpdate = true;
-                a.vpigment.needsUpdate   = true;
-            };
-            
-            /// This function is called for each updated pylon.
-            this.pylonChanged = function (idx, t, c, pig) {
-                var p = GRID.allParticles ()[idx / 4];
-                
-                // Update the radius of each touched pylon.
-                p.radius  = p.radius_max;
-                p.radius2 = p.radius * p.radius;
+                // Declare some useful functions here.
+                var wgl   = me.wgl;
+                var mouse = me.mouse;
 
-                // Each pylon has an associated force vector
-                // affecting particles' movement.
-                p.F.x = mouse.force.x;
-                p.F.y = mouse.force.z;
-            };
-            
-            (this.el).appendChild (this.wgl.renderer.domElement);
-            this.animate ();
+                // Particles processor.
+                /* FIXME Someday.
+                   this.worker = new Worker ("js/particles_worker.js");
+                   this.worker.onmessage = function (e) {
+                   };
+                   this.worker.postMessage ({command: "startloop"});
+                */
+
+                /// This function is called for each updated particle
+                /// and used to keep in sync the webgl attributes.
+                me.particleChanged = function (idx, t, c, pig) {
+                    var a  = wgl.attributes;
+                    var vo = a.vtransform.value;
+                    var vc = a.vcolor.value;
+                    var vp = a.vpigment.value;
+
+                    // Particle's offset and scale.
+                    vo[idx + 0] = t;
+                    vo[idx + 1] = t;
+                    vo[idx + 2] = t;
+                    vo[idx + 3] = t;
+                    // Particle's color.
+                    vc[idx + 0] = c;
+                    vc[idx + 1] = c;
+                    vc[idx + 2] = c;
+                    vc[idx + 3] = c;
+                    // Pigment properties.
+                    vp[idx + 0] = pig;
+                    vp[idx + 1] = pig;
+                    vp[idx + 2] = pig;
+                    vp[idx + 3] = pig;
+                    
+                    a.vcolor.needsUpdate     = true;
+                    a.vtransform.needsUpdate = true;
+                    a.vpigment.needsUpdate   = true;
+                };
+                
+                /// This function is called for each updated pylon.
+                me.pylonChanged = function (idx, t, c, pig) {
+                    var p = GRID.allParticles ()[idx / 4];
+                    
+                    // Update the radius of each touched pylon.
+                    p.radius  = p.radius_max;
+                    p.radius2 = p.radius * p.radius;
+
+                    // Each pylon has an associated force vector
+                    // affecting particles' movement.
+                    p.F.x = mouse.force.x;
+                    p.F.y = mouse.force.z;
+                };
+                
+                (me.el).appendChild (wgl.renderer.domElement);
+                me.animate ();
+            });
         },
 
         initStuff: function () {
@@ -259,7 +285,8 @@
                 this.wgl.material4 &&
                 this.wgl.material5 &&
                 this.brush &&
-                this.brush.isReady ()) {
+                this.brush.isReady () &&
+                MYWGL) {
                 if (this.config.first_frame) {
                     // After all wgl-related stuff is ready, 
                     // initialize what's rest.
@@ -1424,37 +1451,41 @@
                 var dz = this.b - target.b;
                 return Math.sqrt (dx * dx + dy * dy + dz * dz);
             };
-            
-            status = new window.StatusView ();
-            canvas = new Canvas ();
-            
-            // Init color wheel.
-            $('#picker').farbtastic (
-                function (color) {
-                    if (canvas.brush) {
-                        canvas.brush.changeColor (color);
-                        var pig = canvas.brush.pigment;
-                        
-                        // If pigment is known, update the paint properties.
-                        if (pig) {
-                            // Update the controls.
-                            if (controls) {
-                                controls.updateSliders (pig);
-                            }
-                            // Update the paint properties.
-                            canvas.paint.fromPigment (pig);
 
-                            // Display the pigment.
-                            $('#colorlabel').html (pig.name);
-                            $('#colorsample').css ("background-color", pig.colorstr);
+            canvas = new Canvas ();
+
+            // Require stuff. :)
+            require (['js/stuff'], function (o) {
+                status = new o.StatusView ();
+            
+                // Init color wheel.
+                $('#picker').farbtastic (
+                    function (color) {
+                        if (canvas.brush) {
+                            canvas.brush.changeColor (color);
+                            var pig = canvas.brush.pigment;
+                            
+                            // If pigment is known, update the paint properties.
+                            if (pig) {
+                                // Update the controls.
+                                if (controls) {
+                                    controls.updateSliders (pig);
+                                }
+                                // Update the paint properties.
+                                canvas.paint.fromPigment (pig);
+                                
+                                // Display the pigment.
+                                $('#colorlabel').html (pig.name);
+                                $('#colorsample').css ("background-color", pig.colorstr);
+                            }
                         }
                     }
-                }
-            );
+                );
 
-            controls = new window.ControlsView ({canvas: canvas});
+                controls = new o.ControlsView ({canvas: canvas});
+            });
+
             wacom_plugin = document.getElementById ("wacom-plugin");
-
             document.onselectstart = function() {
                 return false;
             };
@@ -1472,5 +1503,4 @@
             }
         }
     });
-
-})(jQuery);
+});

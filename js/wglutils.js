@@ -22,8 +22,9 @@
  * THE SOFTWARE.
  */
 
-(function ($) {
-    window.MyWglStuff = function (canvas) {
+define (function () {
+
+    return function (canvas) {
     
         /**
          * Create a paintable material that will be our
@@ -551,44 +552,46 @@
 
                 // Init the brush object.
                 var utils = this;
-                canvas.brush = new window.Brush (this, canvas.wgl, function (brush) {
-                    var wgl  = canvas.wgl;
-                    var size = brush.physics.size;
+                require (["js/brush"], function (Brush) {
+                    canvas.brush = new Brush (utils, canvas.wgl, function (brush) {
+                        var wgl  = canvas.wgl;
+                        var size = brush.physics.size;
                     
-                    // Add the brush pointer to the scene.
-                    wgl.scene.add (brush.pointer_mesh);
-                    canvas.setInstrument ("brush");
+                        // Add the brush pointer to the scene.
+                        wgl.scene.add (brush.pointer_mesh);
+                        canvas.setInstrument ("brush");
                     
-                    // Setup the bristle rendering stuff.
-                    wgl.bristles.camera    = new THREE.OrthographicCamera (-size/2, +size/2, +size/2, -size/2, -10000, 10000);
-                    wgl.bristles.geometry  = new THREE.PlaneGeometry (size, size);
-                    wgl.bristles.rtt_shape = utils.renderTarget (size, size, THREE.UnsignedByteType, THREE.RGBFormat);
-                    wgl.bristles.pass      = new THREE.RenderPass (
-                        wgl.bristles.scene, 
-                        wgl.bristles.camera,
-                        undefined,
-                        new THREE.Color (0)
-                    );
-                    
-                    // Camera.
-                    wgl.bristles.camera.position.y = 350;
-                    wgl.bristles.camera.lookAt (new THREE.Vector3 (0, 0, 0));
-                    wgl.bristles.camera.rotation.z = 0;
-                    wgl.bristles.scene.add (wgl.bristles.camera);
-                    
-                    // Meshes.
-                    var b = brush.physics.mesh;
-                    for (var i = 0; i < b.length; i++) {
-                        var m = new THREE.Mesh (
-                            wgl.bristles.geometry,
-                            wgl.bristles.material
+                        // Setup the bristle rendering stuff.
+                        wgl.bristles.camera    = new THREE.OrthographicCamera (-size/2, +size/2, +size/2, -size/2, -10000, 10000);
+                        wgl.bristles.geometry  = new THREE.PlaneGeometry (size, size);
+                        wgl.bristles.rtt_shape = utils.renderTarget (size, size, THREE.UnsignedByteType, THREE.RGBFormat);
+                        wgl.bristles.pass      = new THREE.RenderPass (
+                            wgl.bristles.scene, 
+                            wgl.bristles.camera,
+                            undefined,
+                            new THREE.Color (0)
                         );
+                    
+                        // Camera.
+                        wgl.bristles.camera.position.y = 350;
+                        wgl.bristles.camera.lookAt (new THREE.Vector3 (0, 0, 0));
+                        wgl.bristles.camera.rotation.z = 0;
+                        wgl.bristles.scene.add (wgl.bristles.camera);
+                    
+                        // Meshes.
+                        var b = brush.physics.mesh;
+                        for (var i = 0; i < b.length; i++) {
+                            var m = new THREE.Mesh (
+                                wgl.bristles.geometry,
+                                wgl.bristles.material
+                            );
                         
-                        m.position    = b[i].position;
-                        m.scale       = b[i].scale;
-                        m.doubleSided = true;
-                        wgl.bristles.scene.add (m);
-                    }
+                            m.position    = b[i].position;
+                            m.scale       = b[i].scale;
+                            m.doubleSided = true;
+                            wgl.bristles.scene.add (m);
+                        }
+                    });
                 });
 
                 // Tell the caller that we created something.
@@ -650,4 +653,4 @@
         geom.__dirtyVertices = true;
     };
     */
-}) (jQuery);
+});
